@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Researcher Dashboard - PrivaGene</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="javascript:void(0)"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none; cursor: default;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Researcher</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>
+                researcher@university.edu</div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📊</span>Dashboard</a></li>
+                <li class="sidebar-item"><a href="datasets.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📈</span>Datasets</a></li>
+                <li class="sidebar-item"><a href="analytics.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🔬</span>Analytics</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👤</span>Profile</a></li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;"><button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;"><span
+                    class="sidebar-link-icon">🚪</span>Logout</button></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <div style="margin-bottom: var(--space-2xl);">
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Research
+                    Dashboard</h1>
+                <p class="text-secondary">Access anonymized genetic data for research</p>
+            </div>
+
+            <!-- Dataset Stats -->
+            <div class="grid grid-cols-4 gap-lg" style="margin-bottom: var(--space-2xl);">
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Available Datasets</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--primary-color);"
+                        id="datasetCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Anonymized Records</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--secondary-color);"
+                        id="recordCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Disease Categories</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--accent-color);"
+                        id="categoryCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Active Queries</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--success-color);"
+                        id="queryCount">0</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-3 gap-lg" style="margin-bottom: var(--space-2xl);">
+                <div class="card action-card" onclick="window.location.href='datasets.html'">
+                    <div class="action-card-icon">📊</div>
+                    <h3 class="card-title text-center">Browse Datasets</h3>
+                    <p class="text-secondary text-center">Access anonymized data</p>
+                </div>
+
+                <div class="card action-card" onclick="window.location.href='query-builder.html'">
+                    <div class="action-card-icon">🔍</div>
+                    <h3 class="card-title text-center">Query Builder</h3>
+                    <p class="text-secondary text-center">Build custom queries</p>
+                </div>
+
+                <div class="card action-card" onclick="window.location.href='analytics.html'">
+                    <div class="action-card-icon">📈</div>
+                    <h3 class="card-title text-center">Statistical Analysis</h3>
+                    <p class="text-secondary text-center">View insights</p>
+                </div>
+            </div>
+
+            <!-- Privacy Notice -->
+            <div class="alert alert-info">
+                <span class="alert-icon">🔒</span>
+                <div class="alert-content">
+                    <div class="alert-title">Privacy Protected Data</div>
+                    <p>All data accessed through this portal is anonymized and aggregated. Individual patient
+                        information cannot be identified. Usage is logged for audit purposes.</p>
+                </div>
+            </div>
+
+            <!-- Recent Queries -->
+            <div class="card" style="margin-top: var(--space-2xl);">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Queries</h3>
+                </div>
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔬</div>
+                    <div class="empty-state-description">No queries yet</div>
+                    <button onclick="showQueryBuilder()" class="btn btn-primary">Create Query</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        Auth.requireRole('researcher');
+        const user = Auth.getCurrentUser();
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        async function loadDashboard() {
+            try {
+                const categories = await API.getDiseaseCategories();
+                const assessments = await API.getRiskAssessments();
+
+                // Mock dataset counts
+                document.getElementById('datasetCount').textContent = 3;
+                document.getElementById('recordCount').textContent = assessments.filter(a => a.dataSharing).length;
+                document.getElementById('categoryCount').textContent = categories.length;
+                document.getElementById('queryCount').textContent = 0;
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function showQueryBuilder() {
+            window.location.href = 'query-builder.html';
+        }
+
+        loadDashboard();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Builder - PrivaGene</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="javascript:void(0)"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none; cursor: default;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Researcher</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>researcher@example.com
+            </div>
+        </div>
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📊</span>Dashboard</a></li>
+                <li class="sidebar-item"><a href="datasets.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📁</span>Datasets</a></li>
+                <li class="sidebar-item"><a href="query-builder.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🔍</span>Query Builder</a></li>
+                <li class="sidebar-item"><a href="analytics.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📈</span>Analytics</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👤</span>Profile</a></li>
+            </ul>
+        </nav>
+        <div style="margin-top: auto;"><button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;"><span
+                    class="sidebar-link-icon">🚪</span>Logout</button></div>
+    </aside>
+
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Query Builder</h1>
+            <p class="text-secondary" style="margin-bottom: var(--space-2xl);">Build custom queries to analyze
+                anonymized genetic data</p>
+
+            <!-- Query Form -->
+            <div class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h3 class="card-title">Query Parameters</h3>
+                </div>
+                <form id="query-form" style="padding: var(--space-lg);">
+                    <div class="grid grid-cols-2 gap-lg">
+                        <div class="form-group">
+                            <label class="form-label">Age Range</label>
+                            <div style="display: flex; gap: var(--space-sm);">
+                                <input type="number" class="form-input" placeholder="Min" id="ageMin">
+                                <input type="number" class="form-input" placeholder="Max" id="ageMax">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Risk Level</label>
+                            <select class="form-input" id="riskLevel">
+                                <option value="">All</option>
+                                <option value="low">Low (&lt;30%)</option>
+                                <option value="medium">Medium (30-70%)</option>
+                                <option value="high">High (&gt;70%)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Disease Categories</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+                            <label class="form-checkbox"><input type="checkbox" value="breast_cancer"
+                                    class="category-check"><span>Breast Cancer</span></label>
+                            <label class="form-checkbox"><input type="checkbox" value="ovarian_cancer"
+                                    class="category-check"><span>Ovarian Cancer</span></label>
+                            <label class="form-checkbox"><input type="checkbox" value="alzheimers"
+                                    class="category-check"><span>Alzheimer's</span></label>
+                            <label class="form-checkbox"><input type="checkbox" value="hemochromatosis"
+                                    class="category-check"><span>Hemochromatosis</span></label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Run Query</button>
+                    <button type="button" class="btn btn-outline" onclick="resetQuery()"
+                        style="margin-left: var(--space-sm);">Reset</button>
+                </form>
+            </div>
+
+            <!-- Results -->
+            <div class="card" id="results-card" style="display: none;">
+                <div class="card-header">
+                    <h3 class="card-title">Query Results</h3>
+                    <button class="btn btn-sm btn-outline" onclick="exportResults()">Export CSV</button>
+                </div>
+                <div style="padding: var(--space-lg);">
+                    <div id="results-summary" style="margin-bottom: var(--space-xl);"></div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Age</th>
+                                <th>Risk Level</th>
+                                <th>Categories</th>
+                                <th>Assessment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        Auth.requireRole('researcher');
+        Navigation.displayUserInfo(Auth.getCurrentUser());
+        Navigation.setActiveNav();
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        document.getElementById('query-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const filters = {
+                ageMin: document.getElementById('ageMin').value,
+                ageMax: document.getElementById('ageMax').value,
+                riskLevel: document.getElementById('riskLevel').value,
+                categories: Array.from(document.querySelectorAll('.category-check:checked')).map(c => c.value)
+            };
+
+            UI.showLoading('Running query...');
+
+            try {
+                // Simulate query execution
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Mock results
+                const results = generateMockResults(filters);
+                displayResults(results);
+
+                UI.hideLoading();
+                UI.showAlert(`Found ${results.length} matching records`, 'success');
+            } catch (error) {
+                UI.hideLoading();
+                UI.showAlert('Query failed', 'error');
+            }
+        });
+
+        function generateMockResults(filters) {
+            const mockData = [];
+            for (let i = 0; i < 25; i++) {
+                const age = 20 + Math.floor(Math.random() * 60);
+                const risk = Math.floor(Math.random() * 100);
+
+                // Apply filters
+                if (filters.ageMin && age < filters.ageMin) continue;
+                if (filters.ageMax && age > filters.ageMax) continue;
+                if (filters.riskLevel === 'low' && risk >= 30) continue;
+                if (filters.riskLevel === 'medium' && (risk < 30 || risk > 70)) continue;
+                if (filters.riskLevel === 'high' && risk <= 70) continue;
+
+                mockData.push({
+                    id: `RES-${1000 + i}`,
+                    age,
+                    risk,
+                    categories: ['Breast Cancer', 'Ovarian Cancer'][Math.floor(Math.random() * 2)],
+                    date: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).toISOString()
+                });
+            }
+            return mockData;
+        }
+
+        function displayResults(results) {
+            document.getElementById('results-card').style.display = 'block';
+            document.getElementById('results-summary').innerHTML = `
+                <div class="grid grid-cols-3 gap-lg">
+                    <div><div class="text-tertiary text-sm">Total Records</div><div style="font-size: var(--text-2xl); font-weight: 700;">${results.length}</div></div>
+                    <div><div class="text-tertiary text-sm">Avg Risk</div><div style="font-size: var(--text-2xl); font-weight: 700;">${Math.round(results.reduce((a, b) => a + b.risk, 0) / results.length)}%</div></div>
+                    <div><div class="text-tertiary text-sm">High Risk</div><div style="font-size: var(--text-2xl); font-weight: 700;">${results.filter(r => r.risk > 70).length}</div></div>
+                </div>
+            `;
+
+            document.getElementById('results-table').innerHTML = results.map(r => `
+                <tr>
+                    <td>${r.id}</td>
+                    <td>${r.age}</td>
+                    <td><span class="badge badge-${r.risk > 70 ? 'error' : r.risk > 30 ? 'warning' : 'success'}">${r.risk}%</span></td>
+                    <td>${r.categories}</td>
+                    <td class="text-secondary text-sm">${UI.formatDate(r.date)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function resetQuery() {
+            document.getElementById('query-form').reset();
+            document.getElementById('results-card').style.display = 'none';
+        }
+
+        function exportResults() {
+            UI.showAlert('CSV export started', 'success');
+        }
+
+        window.resetQuery = resetQuery;
+        window.exportResults = exportResults;
+    </script>
+</body>
+
+</html>

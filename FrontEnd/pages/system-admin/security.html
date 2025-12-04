@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Settings - PrivaGene</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="javascript:Navigation.goHome()"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-role>System Admin</div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="dashboard.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="audit-logs.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📝</span>
+                        Audit Logs
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="user-management.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👥</span>
+                        User Management
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="security.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">🔐</span>
+                        Security
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;">
+                <span class="sidebar-link-icon">🚪</span>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <div style="margin-bottom: var(--space-2xl);">
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Security
+                    Settings</h1>
+                <p class="text-secondary">Manage platform security and encryption keys</p>
+            </div>
+
+            <!-- Security Key Rotation -->
+            <div class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h3 class="card-title">🔐 Encryption Key Rotation</h3>
+                </div>
+                <div class="card-body">
+                    <div
+                        style="padding: var(--space-md); background: var(--info-light); border-left: 4px solid var(--info-color); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+                        <p style="margin-bottom: var(--space-xs);"><strong>ℹ️ About Key Rotation:</strong></p>
+                        <p class="text-secondary">
+                            Regular key rotation is essential for maintaining platform security. This process
+                            re-encrypts all
+                            sensitive data with new encryption keys while maintaining backward compatibility. The
+                            rotation typically
+                            takes 5-10 minutes and runs in the background.
+                        </p>
+                    </div>
+
+                    <div id="rotationStatus" style="margin-bottom: var(--space-lg);">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <button id="initiateRotation" class="btn btn-primary">
+                        <span id="rotationBtnText">Initiate Key Rotation</span>
+                        <span id="rotationBtnLoading" style="display: none;">
+                            <span class="spinner spinner-sm"></span> Initiating...
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rotation History -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Rotation History</h3>
+                </div>
+                <div id="rotationHistory">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        Auth.requireRole('system_admin');
+        const user = Auth.getCurrentUser();
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        let statusCheckInterval = null;
+
+        async function loadRotationStatus() {
+            try {
+                const status = await API.getKeyRotationStatus();
+                displayRotationStatus(status);
+
+                // If rotation is in progress, poll for updates
+                if (status && status.status === 'in_progress') {
+                    if (!statusCheckInterval) {
+                        statusCheckInterval = setInterval(loadRotationStatus, 2000);
+                    }
+                } else {
+                    if (statusCheckInterval) {
+                        clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading rotation status:', error);
+            }
+        }
+
+        function displayRotationStatus(status) {
+            const container = document.getElementById('rotationStatus');
+
+            if (!status || status.status === 'completed') {
+                container.innerHTML = `
+                    <div style="padding: var(--space-md); background: var(--success-light); border-left: 4px solid var(--success-color); border-radius: var(--radius-md);">
+                        <p style="font-weight: 600; margin-bottom: var(--space-xs);">✓ All keys are up to date</p>
+                        <p class="text-secondary text-sm">
+                            ${status && status.completedAt
+                        ? 'Last rotation: ' + UI.formatDateTime(status.completedAt)
+                        : 'No recent rotation'}
+                        </p>
+                    </div>
+                `;
+                document.getElementById('initiateRotation').disabled = false;
+            } else if (status.status === 'in_progress') {
+                container.innerHTML = `
+                    <div style="padding: var(--space-md); background: var(--warning-light); border-left: 4px solid var(--warning-color); border-radius: var(--radius-md);">
+                        <p style="font-weight: 600; margin-bottom: var(--space-sm);">⚠️ Key Rotation In Progress</p>
+                        <p class="text-secondary text-sm" style="margin-bottom: var(--space-md);">
+                            Started: ${UI.formatDateTime(status.initiatedAt)}
+                        </p>
+                        <div class="progress-bar" style="margin-bottom: var(--space-sm);">
+                            <div class="progress-bar-fill" style="width: ${status.progress || 0}%;"></div>
+                        </div>
+                        <p class="text-secondary text-sm">Progress: ${status.progress || 0}%</p>
+                    </div>
+                `;
+                document.getElementById('initiateRotation').disabled = true;
+            }
+        }
+
+        async function loadRotationHistory() {
+            try {
+                const history = await API.getKeyRotationHistory();
+                displayRotationHistory(history);
+            } catch (error) {
+                console.error('Error loading rotation history:', error);
+            }
+        }
+
+        function displayRotationHistory(history) {
+            const container = document.getElementById('rotationHistory');
+
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: var(--space-2xl);">
+                        <div class="empty-state-icon">🔐</div>
+                        <div class="empty-state-description">No rotation history</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const table = `
+                <div style="overflow-x: auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Initiated At</th>
+                                <th>Completed At</th>
+                                <th>Status</th>
+                                <th>Initiated By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${history.map(rot => `
+                                <tr>
+                                    <td>${UI.formatDateTime(rot.initiatedAt)}</td>
+                                    <td>${rot.completedAt ? UI.formatDateTime(rot.completedAt) : 'In Progress'}</td>
+                                    <td>
+                                        <span class="badge badge-${rot.status === 'completed' ? 'success' : 'warning'}">
+                                            ${rot.status}
+                                        </span>
+                                    </td>
+                                    <td class="text-secondary">${rot.initiatedBy}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = table;
+        }
+
+        document.getElementById('initiateRotation').addEventListener('click', async () => {
+            const confirmed = await UI.confirm(
+                'Are you sure you want to initiate key rotation? This operation will run in the background for 5-10 minutes.',
+                'Initiate Key Rotation'
+            );
+
+            if (!confirmed) return;
+
+            const btn = document.getElementById('initiateRotation');
+            const btnText = document.getElementById('rotationBtnText');
+            const btnLoading = document.getElementById('rotationBtnLoading');
+
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+
+            try {
+                await API.initiateKeyRotation();
+                UI.showAlert('Key rotation initiated successfully', 'success');
+                await loadRotationStatus();
+                await loadRotationHistory();
+            } catch (error) {
+                console.error('Error initiating key rotation:', error);
+                UI.showAlert('Failed to initiate key rotation', 'error');
+                btn.disabled = false;
+            } finally {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // Initial load
+        loadRotationStatus();
+        loadRotationHistory();
+
+        // Cleanup interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+        });
+    </script>
+</body>
+
+</html>

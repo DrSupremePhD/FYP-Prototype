@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Assessment Results - PrivaGene</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+
+    <style>
+        .risk-gauge {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto var(--space-xl);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .risk-gauge-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(var(--success-color) 0deg 108deg,
+                    var(--warning-color) 108deg 252deg,
+                    var(--error-color) 252deg 360deg);
+            padding: 10px;
+        }
+
+        .risk-gauge-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .risk-percentage {
+            font-size: var(--text-5xl);
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../../index.html"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📊</span>Dashboard</a></li>
+                <li class="sidebar-item"><a href="upload-gene.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📤</span>Upload Gene Data</a></li>
+                <li class="sidebar-item"><a href="disease-selection.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🧪</span>Risk Assessment</a></li>
+                <li class="sidebar-item"><a href="risk-results.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📈</span>My Results</a></li>
+                <li class="sidebar-item"><a href="appointments.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📅</span>Appointments</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👤</span>Profile</a></li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;"><button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;"><span
+                    class="sidebar-link-icon">🚪</span>Logout</button></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-with-sidebar">
+        <div class="container">
+            <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+
+            <div style="margin-bottom: var(--space-2xl); margin-top: var(--space-lg);">
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Your Risk
+                    Assessment Results</h1>
+                <p class="text-secondary">Computed on <span id="computedDate"></span></p>
+            </div>
+
+            <!-- Overall Risk -->
+            <div class="card text-center" style="margin-bottom: var(--space-2xl);">
+                <h2 class="card-title">Overall Intersect Score</h2>
+                <br>
+                <div class="risk-gauge">
+                    <div class="risk-gauge-circle">
+                        <div class="risk-gauge-inner">
+                            <div class="risk-percentage" id="overallRisk">-</div>
+                        </div>
+                    </div>
+                </div>
+                <p id="riskDescription" class="text-secondary"></p>
+            </div>
+
+            <!-- Individual Results -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Disease-Specific Risk</h3>
+                </div>
+                <div id="individualResults">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div style="margin-top: var(--space-2xl); text-align: center;">
+                <div class="flex justify-center gap-lg">
+                    <button onclick="window.print()" class="btn btn-outline">📄 Download Report</button>
+                    <a href="explanation.html" class="btn btn-secondary">📖 View Detailed Explanation</a>
+                    <a href="appointments.html" class="btn btn-primary">📅 Book Consultation</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/api-backend.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        Auth.requireRole('patient');
+        const user = Auth.getCurrentUser();
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        async function loadResults() {
+            try {
+                // Retrieve ALL risk assessments for this user
+                console.log('=== Fetching risk assessments from database ===');
+                const assessments = await BackendAPI.getRiskAssessments(user.id);
+                
+                console.log('=== ALL RISK ASSESSMENTS ===');
+                console.log('Total assessments found:', assessments.length);
+                console.log('Full assessments array:', assessments);
+                
+                if (assessments.length === 0) {
+                    document.querySelector('.container').innerHTML = `
+                        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+                        <div style="margin-top: var(--space-2xl); text-align: center;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <div class="empty-state-title">No Risk Assessments Yet</div>
+                                <div class="empty-state-description">
+                                    You haven't run any risk assessments yet. Upload your genetic data and select diseases to get started.
+                                </div>
+                                <div style="margin-top: var(--space-xl);">
+                                    <a href="disease-selection.html" class="btn btn-primary">Run Risk Assessment</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Display all assessments
+                displayAllAssessments(assessments);
+
+            } catch (error) {
+                console.error('=== ERROR LOADING RESULTS ===');
+                console.error('Error:', error);
+                console.error('Error message:', error.message);
+                console.error('Stack trace:', error.stack);
+                UI.showAlert('Failed to load results: ' + error.message, 'error');
+            }
+        }
+
+        function displayAllAssessments(assessments) {
+            // Sort by date (most recent first)
+            const sortedAssessments = [...assessments].sort((a, b) => {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+
+            // Build HTML for all assessment cards
+            const assessmentCards = sortedAssessments.map((assessment, index) => {
+                const overallRisk = Math.round(assessment.overallRisk);
+                
+                // Determine risk level and color
+                let riskLevel, riskColor;
+                if (overallRisk < 30) {
+                    riskLevel = 'Low';
+                    riskColor = 'var(--success-color)';
+                } else if (overallRisk < 70) {
+                    riskLevel = 'Medium';
+                    riskColor = 'var(--warning-color)';
+                } else {
+                    riskLevel = 'High';
+                    riskColor = 'var(--error-color)';
+                }
+
+                // Parse matched genes if it's a JSON string
+                let matchedGenes = assessment.matchedGenes;
+                if (typeof matchedGenes === 'string') {
+                    try {
+                        matchedGenes = JSON.parse(matchedGenes);
+                    } catch (e) {
+                        matchedGenes = [];
+                    }
+                }
+
+                const geneList = matchedGenes && matchedGenes.length > 0 
+                    ? ` Matching genes: ${matchedGenes.join(', ')}.` 
+                    : '';
+
+                return `
+                    <div class="card text-center" style="margin-bottom: var(--space-2xl);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+                            <h2 class="card-title">${assessment.diseaseName || 'Unknown Disease'}</h2>
+                            <span class="text-secondary text-sm">
+                                ${UI.formatDateTime(assessment.createdAt)}
+                            </span>
+                        </div>
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-lg);">
+                            Overall Intersect Score
+                        </h3>
+                        <div class="risk-gauge">
+                            <div class="risk-gauge-circle">
+                                <div class="risk-gauge-inner">
+                                    <div class="risk-percentage" style="color: ${riskColor};">
+                                        ${overallRisk}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="text-secondary">
+                            Your genetic risk for ${assessment.diseaseName} is <strong style="color: ${riskColor};">${riskLevel.toLowerCase()}</strong>. 
+                            ${assessment.matchCount} gene(s) match, resulting in a ${overallRisk}% intersection score.${geneList}
+                        </p>
+                    </div>
+                `;
+            }).join('');
+
+            // Update the page content
+            const container = document.querySelector('.container');
+            container.innerHTML = `
+                <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+
+                <div style="margin-bottom: var(--space-2xl); margin-top: var(--space-lg);">
+                    <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                        Your Risk Assessment Results
+                    </h1>
+                    <p class="text-secondary">
+                        Showing ${sortedAssessments.length} assessment${sortedAssessments.length !== 1 ? 's' : ''}
+                    </p>
+                </div>
+
+                ${assessmentCards}
+
+                <!-- Actions -->
+                <div style="margin-top: var(--space-2xl); text-align: center;">
+                    <div class="flex justify-center gap-lg">
+                        <button onclick="window.print()" class="btn btn-outline">📄 Download Report</button>
+                        <a href="disease-selection.html" class="btn btn-primary">🧪 Run New Assessment</a>
+                    </div>
+                </div>
+            `;
+
+            console.log(`Displayed ${sortedAssessments.length} assessments`);
+        }
+
+        loadResults();
+    </script>
+
+</body>
+
+</html>

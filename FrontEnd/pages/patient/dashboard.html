@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PrivaGene</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../../index.html"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="dashboard.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="upload-gene.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📤</span>
+                        Upload Gene Data
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="disease-selection.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">🧪</span>
+                        Risk Assessment
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="risk-results.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📈</span>
+                        My Results
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="appointments.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📅</span>
+                        Appointments
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="profile.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👤</span>
+                        Profile
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;">
+                <span class="sidebar-link-icon">🚪</span>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div style="margin-bottom: var(--space-2xl);">
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                    Welcome Back, <span data-user-name>User</span>!
+                </h1>
+                <p class="text-secondary">Manage your genetic health data and assessments</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-3 gap-lg" style="margin-bottom: var(--space-2xl);">
+                <div class="card action-card" onclick="window.location.href='upload-gene.html'">
+                    <div class="action-card-icon">📤</div>
+                    <h3 class="card-title text-center">Upload Gene Data</h3>
+                    <p class="text-secondary text-center">Upload your genetic data securely</p>
+                </div>
+
+                <div class="card action-card" onclick="window.location.href='disease-selection.html'">
+                    <div class="action-card-icon">🧪</div>
+                    <h3 class="card-title text-center">New Assessment</h3>
+                    <p class="text-secondary text-center">Start a risk assessment</p>
+                </div>
+
+                <div class="card action-card" onclick="window.location.href='appointments.html'">
+                    <div class="action-card-icon">📅</div>
+                    <h3 class="card-title text-center">Book Appointment</h3>
+                    <p class="text-secondary text-center">Meet with a specialist</p>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-4 gap-lg" style="margin-bottom: var(--space-2xl);">
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Gene Files Uploaded</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--primary-color);"
+                        id="uploadCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Assessments Done</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--secondary-color);"
+                        id="assessmentCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Upcoming Appointments
+                    </div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--accent-color);"
+                        id="appointmentCount">0</div>
+                </div>
+
+                <div class="card">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Overall Risk</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;" id="overallRisk">-</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity & Upcoming Appointments -->
+            <div class="grid grid-cols-2 gap-xl">
+                <!-- Recent Results -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Risk Assessments</h3>
+                    </div>
+                    <div id="recentResults">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Upcoming Appointments -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Upcoming Appointments</h3>
+                    </div>
+                    <div id="upcomingAppointments">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/config.js"></script>
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/api-backend.js"></script>
+    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        // Require authentication
+        Auth.requireRole('patient');
+
+        const user = Auth.getCurrentUser();
+
+        // Display user info
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        // Logout handler
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            Auth.logout();
+        });
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // BACKEND_INTEGRATION: These API calls will fetch from your backend
+                const uploads = await API.getGeneUploads(user.id);
+                const assessments = await API.getRiskAssessments(user.id);
+                const appointments = await API.getAppointments(user.id, 'patient');
+
+                // Update stats
+                document.getElementById('uploadCount').textContent = uploads.length;
+                document.getElementById('assessmentCount').textContent = assessments.length;
+
+                // Filter upcoming appointments
+                const now = new Date();
+                const upcoming = appointments.filter(apt =>
+                    new Date(apt.date) > now && apt.status !== 'cancelled'
+                );
+                document.getElementById('appointmentCount').textContent = upcoming.length;
+
+                // Show overall risk from most recent assessment
+                if (assessments.length > 0) {
+                    const latest = assessments[assessments.length - 1];
+                    const risk = latest.overallRisk;
+                    let color, level;
+
+                    if (risk < 30) {
+                        color = 'var(--success-color)';
+                        level = 'Low';
+                    } else if (risk < 70) {
+                        color = 'var(--warning-color)';
+                        level = 'Medium';
+                    } else {
+                        color = 'var(--error-color)';
+                        level = 'High';
+                    }
+
+                    document.getElementById('overallRisk').innerHTML = `
+            <span style="color: ${color}">${risk}% ${level}</span>
+          `;
+                }
+
+                // Display recent results
+                displayRecentResults(assessments.slice(-3).reverse());
+
+                // Display upcoming appointments
+                displayUpcomingAppointments(upcoming.slice(0, 3));
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                UI.showAlert('Failed to load dashboard data', 'error');
+            }
+        }
+
+        function displayRecentResults(assessments) {
+            const container = document.getElementById('recentResults');
+
+            if (assessments.length === 0) {
+                container.innerHTML = `
+          <div class="empty-state" style="padding: var(--space-xl);">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-description">No assessments yet</div>
+            <a href="disease-selection.html" class="btn btn-primary btn-sm">Start Assessment</a>
+          </div>
+        `;
+                return;
+            }
+
+            container.innerHTML = assessments.map(assessment => `
+        <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer;"
+             onclick="window.location.href='risk-results.html?id=${assessment.id}'">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 500;">${assessment.results.length} Disease Categories</div>
+              <div class="text-secondary text-sm">${UI.formatDate(assessment.computedAt)}</div>
+            </div>
+            <div class="risk-indicator risk-${assessment.overallRisk < 30 ? 'low' : assessment.overallRisk < 70 ? 'medium' : 'high'}">
+              ${assessment.overallRisk}% Risk
+            </div>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function displayUpcomingAppointments(appointments) {
+            const container = document.getElementById('upcomingAppointments');
+
+            if (appointments.length === 0) {
+                container.innerHTML = `
+          <div class="empty-state" style="padding: var(--space-xl);">
+            <div class="empty-state-icon">📅</div>
+            <div class="empty-state-description">No upcoming appointments</div>
+            <a href="appointments.html" class="btn btn-primary btn-sm">Book Appointment</a>
+          </div>
+        `;
+                return;
+            }
+
+            container.innerHTML = appointments.map(apt => `
+        <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <div style="font-weight: 500;">${apt.reason || 'Genetic Counseling'}</div>
+              <div class="text-secondary text-sm">${UI.formatDate(apt.date)} at ${apt.slot}</div>
+            </div>
+            <span class="badge badge-success">Confirmed</span>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+
+</html>

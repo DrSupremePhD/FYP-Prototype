@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gene Management - PrivaGene</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="javascript:void(0)"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none; cursor: default;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Admin</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>admin@hospital.com
+            </div>
+        </div>
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📊</span>Dashboard</a></li>
+                <li class="sidebar-item"><a href="gene-management.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🧬</span>Gene Database</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👤</span>Profile</a></li>
+            </ul>
+        </nav>
+        <div style="margin-top: auto;"><button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;"><span
+                    class="sidebar-link-icon">🚪</span>Logout</button></div>
+    </aside>
+
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2xl);">
+                <div>
+                    <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Gene
+                        Database</h1>
+                    <p class="text-secondary">Manage organizational gene database and disease categorization</p>
+                </div>
+                <button class="btn btn-primary" onclick="showAddGeneModal()">+ Add Gene</button>
+            </div>
+
+            <!-- Gene List -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Genes</h3>
+                    <input type="text" class="form-input" placeholder="Search genes..." id="searchGenes"
+                        style="max-width: 300px;">
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Gene Name</th>
+                            <th>Type</th>
+                            <th>Coefficient</th>
+                            <th>Categories</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="genesList"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/config.js"></script>
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/api-backend.js"></script>
+    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        Auth.requireRole('admin');
+        Navigation.displayUserInfo(Auth.getCurrentUser());
+        Navigation.setActiveNav();
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        function loadGenes() {
+            const genes = Storage.getGenes();
+            const tbody = document.getElementById('genesList');
+
+            tbody.innerHTML = genes.map(gene => `
+                <tr>
+                    <td style="font-weight: 500;">${gene.name}</td>
+                    <td><span class="badge badge-info">${gene.type}</span></td>
+                    <td>${gene.coefficient}</td>
+                    <td class="text-secondary text-sm">${gene.categories.join(', ')}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="editGene('${gene.id}')">Edit</button>
+                        <button class="btn btn-sm btn-error" onclick="deleteGene('${gene.id}')" style="margin-left: var(--space-xs);">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function showAddGeneModal() {
+            UI.showModal({
+                title: 'Add New Gene',
+                body: `
+                    <form id="gene-form">
+                        <div class="form-group">
+                            <label class="form-label">Gene Name</label>
+                            <input type="text" class="form-input" id="geneName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Type</label>
+                            <select class="form-input" id="geneType">
+                                <option value="oncogene">Oncogene</option>
+                                <option value="tumor_suppressor">Tumor Suppressor</option>
+                                <option value="risk_factor">Risk Factor</option>
+                                <option value="mutation">Mutation</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Coefficient</label>
+                            <input type="number" class="form-input" id="geneCoeff" step="0.01" min="0" max="1" required>
+                        </div>
+                    </form>
+                `,
+                buttons: [
+                    { text: 'Cancel', className: 'btn-outline' },
+                    {
+                        text: 'Add Gene',
+                        className: 'btn-primary',
+                        onClick: async () => {
+                            const name = document.getElementById('geneName').value;
+                            const type = document.getElementById('geneType').value;
+                            const coefficient = parseFloat(document.getElementById('geneCoeff').value);
+
+                            if (!name || !coefficient) {
+                                UI.showAlert('Please fill all fields', 'error');
+                                return false;
+                            }
+
+                            Storage.addGene({ name, type, coefficient, categories: [] });
+                            UI.showAlert('Gene added successfully', 'success');
+                            loadGenes();
+                            return true;
+                        }
+                    }
+                ]
+            });
+        }
+
+        async function deleteGene(id) {
+            const confirmed = await UI.confirm('Delete this gene permanently?');
+            if (!confirmed) return;
+
+            Storage.deleteGene(id);
+            UI.showAlert('Gene deleted', 'success');
+            loadGenes();
+        }
+
+        async function editGene(id) {
+            const genes = Storage.getGenes();
+            const gene = genes.find(g => g.id === id);
+
+            if (!gene) {
+                UI.showAlert('Gene not found', 'error');
+                return;
+            }
+
+            UI.showModal({
+                title: 'Edit Gene',
+                body: `
+                    <form id="edit-gene-form">
+                        <div class="form-group">
+                            <label class="form-label">Gene Name</label>
+                            <input type="text" class="form-input" id="editGeneName" value="${gene.name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Type</label>
+                            <select class="form-input" id="editGeneType">
+                                <option value="oncogene" ${gene.type === 'oncogene' ? 'selected' : ''}>Oncogene</option>
+                                <option value="tumor_suppressor" ${gene.type === 'tumor_suppressor' ? 'selected' : ''}>Tumor Suppressor</option>
+                                <option value="risk_factor" ${gene.type === 'risk_factor' ? 'selected' : ''}>Risk Factor</option>
+                                <option value="mutation" ${gene.type === 'mutation' ? 'selected' : ''}>Mutation</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Coefficient</label>
+                            <input type="number" class="form-input" id="editGeneCoeff" step="0.01" min="0" max="1" value="${gene.coefficient}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Categories (comma-separated)</label>
+                            <input type="text" class="form-input" id="editGeneCategories" value="${(gene.categories || []).join(', ')}" placeholder="e.g., breast_cancer, ovarian_cancer">
+                        </div>
+                    </form>
+                `,
+                buttons: [
+                    { text: 'Cancel', className: 'btn-outline' },
+                    {
+                        text: 'Save Changes',
+                        className: 'btn-primary',
+                        onClick: async () => {
+                            const name = document.getElementById('editGeneName').value.trim();
+                            const type = document.getElementById('editGeneType').value;
+                            const coefficient = parseFloat(document.getElementById('editGeneCoeff').value);
+                            const categoriesInput = document.getElementById('editGeneCategories').value.trim();
+                            const categories = categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(c => c) : [];
+
+                            if (!name || !coefficient) {
+                                UI.showAlert('Please fill all required fields', 'error');
+                                return false;
+                            }
+
+                            const updates = { name, type, coefficient, categories };
+                            Storage.updateGene(id, updates);
+                            UI.showAlert('Gene updated successfully', 'success');
+                            loadGenes();
+                            return true;
+                        }
+                    }
+                ]
+            });
+        }
+
+        document.getElementById('searchGenes').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#genesList tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+
+        window.showAddGeneModal = showAddGeneModal;
+        window.deleteGene = deleteGene;
+
+        loadGenes();
+    </script>
+</body>
+
+</html>

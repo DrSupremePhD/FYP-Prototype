@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ & Support - PrivaGene</title>
+    <meta name="description"
+        content="Frequently asked questions and support resources for PrivaGene genetic risk assessment platform.">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="../css/components.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <a href="#" class="navbar-brand">
+                    <span class="navbar-brand-icon">🧬</span>
+                    PrivaGene
+                </a>
+                <ul class="navbar-menu">
+                    <li><a href="login.html" class="navbar-link">Login</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-top: var(--space-3xl); padding-bottom: var(--space-3xl);">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: var(--space-3xl);">
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-md);">
+                    Frequently Asked Questions
+                </h1>
+                <p class="text-secondary">Find answers to common questions about PrivaGene</p>
+            </div>
+
+            <!-- Search Box -->
+            <div class="form-group" style="margin-bottom: var(--space-2xl);">
+                <input type="search" id="searchBox" class="form-control form-control-lg" placeholder="Search FAQs...">
+            </div>
+
+            <!-- FAQ Categories -->
+            <div class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h2 class="card-title">🔐 Privacy & Security</h2>
+                </div>
+                <div class="card-body">
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            How is my genetic data protected?
+                        </h3>
+                        <p class="text-secondary">
+                            Your genetic data is encrypted using AES-256 encryption before upload. We use Private Set
+                            Intersection (PSI)
+                            to compute risk assessments without exposing your raw genetic information. Your data is
+                            never stored in plaintext.
+                        </p>
+                    </div>
+
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            Who can access my data?
+                        </h3>
+                        <p class="text-secondary">
+                            Only you have access to your full genetic data and results. Hospitals and specialists can
+                            only see
+                            information you explicitly share with them during consultations. Researchers only access
+                            anonymized,
+                            aggregated data with your consent.
+                        </p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            Can I delete my data?
+                        </h3>
+                        <p class="text-secondary">
+                            Yes, you can delete your account and all associated data at any time from your profile
+                            settings.
+                            Deletion is permanent and cannot be undone.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h2 class="card-title">🧬 How PSI Works</h2>
+                </div>
+                <div class="card-body">
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            What is Private Set Intersection (PSI)?
+                        </h3>
+                        <p class="text-secondary">
+                            PSI is a cryptographic technique that allows two parties to find common elements in their
+                            datasets
+                            without revealing any other information. In PrivaGene, we use PSI to match your genetic
+                            markers against
+                            disease-associated genes in our database without exposing your raw genetic data.
+                        </p>
+                    </div>
+
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            How accurate are the risk assessments?
+                        </h3>
+                        <p class="text-secondary">
+                            Our risk assessments are based on peer-reviewed genetic research and continuously updated
+                            gene databases.
+                            However, genetic risk is just one factor in disease development. Environmental factors,
+                            lifestyle, and
+                            family history also play important roles.
+                        </p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            How long does risk assessment take?
+                        </h3>
+                        <p class="text-secondary">
+                            PSI computation typically takes 2-5 minutes depending on the number of disease categories
+                            selected
+                            and the size of your genetic data file.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h2 class="card-title">📤 Uploading Data</h2>
+                </div>
+                <div class="card-body">
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            What file formats are supported?
+                        </h3>
+                        <p class="text-secondary">
+                            We accept genetic data in common formats: VCF, 23andMe, AncestryDNA, and standard CSV files
+                            with genetic markers. Maximum file size is 50MB.
+                        </p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            Can I upload multiple files?
+                        </h3>
+                        <p class="text-secondary">
+                            Yes, you can upload multiple genetic data files. Each upload is processed separately and
+                            tracked
+                            in your upload history.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">💬 Support & Consultations</h2>
+                </div>
+                <div class="card-body">
+                    <div class="faq-item" style="margin-bottom: var(--space-lg);">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            How do I book a consultation?
+                        </h3>
+                        <p class="text-secondary">
+                            From your dashboard, navigate to the Appointments section. You can view available
+                            specialists,
+                            select a time slot, and book a consultation directly through the platform.
+                        </p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-sm);">
+                            Can't find your answer?
+                        </h3>
+                        <p class="text-secondary">
+                            <a href="contact.html" class="text-primary">Contact our support team</a> and we'll get back
+                            to you within 24 hours.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer
+        style="background: var(--bg-tertiary); padding: var(--space-2xl) 0; margin-top: var(--space-3xl); text-align: center;">
+        <div class="container">
+            <p class="text-secondary">© 2025 PrivaGene. Secure Genetic Risk Assessment Platform.</p>
+        </div>
+    </footer>
+
+    <script src="../js/storage.js"></script>
+    <script src="../js/navigation.js"></script>
+
+    <script>
+        // Simple FAQ search
+        const searchBox = document.getElementById('searchBox');
+        const faqItems = document.querySelectorAll('.faq-item');
+
+        searchBox.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+
+            faqItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Set active nav
+        Navigation.setActiveNav();
+    </script>
+</body>
+
+</html>
