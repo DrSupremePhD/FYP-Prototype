@@ -1,5 +1,4 @@
-# CSIT314-Mini-FYP
-CSIT314 Software Methodology 
+# FYP
 
 # 🧭 GitHub Guide: How to Clone and Pull a Repository
 
@@ -25,7 +24,7 @@ Before starting, make sure you have:
 2. Click the green **Code** button.
 3. Copy the **HTTPS** link (recommended for beginners).
 
-Example: https://github.com/yahweh9/CSIT314-Mini-FYP
+Example: https://github.com/DrSupremePhD/FYP-Prototype
 
 
 
@@ -40,7 +39,7 @@ Cloning means making a local copy of the repository on your computer.
    ```bash
    cd ~/Desktop
 
-3. git clone https://github.com/yahweh9/CSIT314-Mini-FYP
+3. git clone https://github.com/DrSupremePhD/FYP-Prototype
 
 4. cd repository-name
 ✅ You now have a full copy of the project locally!
