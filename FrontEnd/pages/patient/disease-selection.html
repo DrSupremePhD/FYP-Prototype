@@ -135,14 +135,19 @@
                 categoriesList = categories;
 
                 container.innerHTML = categories.map(category => `
-          <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
-            <input type="checkbox" value="${category.id}" class="category-checkbox" style="margin-right: var(--space-md);">
-            <div style="flex: 1;">
-              <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
-              <div class="text-secondary text-sm">${category.description}</div>
-            </div>
-          </label>
-        `).join('');
+                    <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
+                        <input type="checkbox" value="${category.id}" class="category-checkbox" style="margin-right: var(--space-md);">
+                        <div style="flex: 1;">
+                        <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
+                        <div class="text-secondary text-sm">${category.description}</div>
+                        <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
+                            <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                            🏥 Provider: ${category.hospitalId}
+                            </span>
+                        </div>
+                        </div>
+                    </label>
+                `).join('');
 
                 // Add change listeners
                 document.querySelectorAll('.category-checkbox').forEach(checkbox => {
@@ -184,14 +189,9 @@
 
                 // Loop through diseases and run PSI one-by-one
                 for (const diseaseID of selectedDiseaseID) {
-
-                    // Lookup name using categoriesList
-                    const diseaseObj = categoriesList.find(d => d.id === diseaseID);
-                    const selectedDiseaseName = diseaseObj ? diseaseObj.name : "(Unknown Disease)";
-
                     console.log("🔄 Running PSI for:", diseaseID);
 
-                    const result = await runPSI(diseaseID, selectedDiseaseName);
+                    const result = await runPSI(diseaseID);
 
                     allResults.push({
                         disease: diseaseID,
@@ -203,13 +203,12 @@
                     await BackendAPI.createRiskAssessment({
                         userId: user.id,
                         overallRisk: entry.result.riskPercentage,
-                        diseaseName: entry.result.selectedDiseaseName,
+                        diseaseId: entry.disease,
                         matchCount: entry.result.matchCount,
                         matchedGenes: entry.result.matches,
                         riskPercentage: entry.result.riskPercentage
                     });
                 }
-
 
                 console.log("🟩 Final aggregated PSI results:", allResults);
 

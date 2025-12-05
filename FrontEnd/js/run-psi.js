@@ -76,12 +76,11 @@ function randomSecret(mod) {
 /**
  * Run Private Set Intersection computation
  * @param {string} selectedDiseaseID - Disease ID
- * @param {string} selectedDiseaseName - Disease name for display
  * @returns {Promise<Object>} PSI results with match count and risk percentage
  */
-async function runPSI(selectedDiseaseID, selectedDiseaseName) {
+async function runPSI(selectedDiseaseID) {
     console.log("PSI: Starting runPSI()");
-    console.log("Selected disease:", selectedDiseaseID, "-", selectedDiseaseName);
+    console.log("Selected disease ID:", selectedDiseaseID);
 
     // Load patient genes from browser storage
     const patientGenes = JSON.parse(localStorage.getItem("mappedGeneSymbols") || "[]");
@@ -155,11 +154,10 @@ async function runPSI(selectedDiseaseID, selectedDiseaseName) {
     console.log("Risk percentage:", riskPercentage.toFixed(2) + "%");
 
     return {
-        matchCount: matches.length,
-        matches,
-        selectedDiseaseName,
-        riskPercentage
-    };
+            matchCount: matches.length,
+            matches,
+            riskPercentage
+        };
 }
 
 /**

@@ -8,14 +8,14 @@ const riskAssessmentService = {
    * @returns {Promise<Object>} Created assessment
    */
   async createAssessment(assessmentData) {
-    const { userId, overallRisk, diseaseName, matchCount, matchedGenes, riskPercentage } = assessmentData;
+    const { userId, overallRisk, diseaseId, matchCount, matchedGenes, riskPercentage } = assessmentData;
     
     const id = 'risk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const createdAt = new Date().toISOString();
     
     await run(`
       INSERT INTO risk_assessments (
-        id, user_id, overall_risk, disease_name, match_count, 
+        id, user_id, overall_risk, disease_id, match_count, 
         matched_genes, risk_percentage, created_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -23,7 +23,7 @@ const riskAssessmentService = {
       id,
       userId,
       overallRisk,
-      diseaseName || null,
+      diseaseId || null,
       matchCount || 0,
       JSON.stringify(matchedGenes || []),
       riskPercentage || overallRisk,
@@ -34,7 +34,7 @@ const riskAssessmentService = {
       id,
       userId,
       overallRisk,
-      diseaseName,
+      diseaseId,
       matchCount,
       matchedGenes,
       riskPercentage,
@@ -53,7 +53,7 @@ const riskAssessmentService = {
         id,
         user_id as userId,
         overall_risk as overallRisk,
-        disease_name as diseaseName,
+        disease_id as diseaseId,
         match_count as matchCount,
         matched_genes as matchedGenes,
         risk_percentage as riskPercentage,
@@ -81,7 +81,7 @@ const riskAssessmentService = {
         id,
         user_id as userId,
         overall_risk as overallRisk,
-        disease_name as diseaseName,
+        disease_id as diseaseId,
         match_count as matchCount,
         matched_genes as matchedGenes,
         risk_percentage as riskPercentage,
@@ -119,7 +119,7 @@ const riskAssessmentService = {
         id,
         user_id as userId,
         overall_risk as overallRisk,
-        disease_name as diseaseName,
+        disease_id as diseaseId,
         match_count as matchCount,
         matched_genes as matchedGenes,
         risk_percentage as riskPercentage,

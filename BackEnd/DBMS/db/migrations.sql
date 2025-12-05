@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   overall_risk REAL NOT NULL,
-  disease_name TEXT,
+  disease_id TEXT,
   match_count INTEGER,
   matched_genes TEXT,
   risk_percentage REAL,

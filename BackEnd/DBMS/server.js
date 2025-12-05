@@ -438,7 +438,10 @@ app.listen(PORT, () => {
 // Matches Flask: GET /api/disease-categories
 app.get('/api/disease-categories', (req, res) => {
   try {
-    const safeList = diseaseService.getDiseaseCategories();
+    const categories = diseaseService.getDiseaseCategories();
+    
+    // Remove genes before sending to frontend - critical for PSI privacy
+    const safeList = categories.map(({ genes, ...rest }) => rest);
     
     return res.status(200).json(safeList);
   } catch (err) {
@@ -518,7 +521,7 @@ app.post('/api/backend_psi', (req, res) => {
 // Create (store) risk assessment results
 app.post('/api/risk-assessments', async (req, res) => {
   try {
-    const { userId, overallRisk, diseaseName, matchCount, matchedGenes, riskPercentage } = req.body;
+    const { userId, overallRisk, diseaseId, matchCount, matchedGenes, riskPercentage } = req.body;
 
     if (!userId || overallRisk === undefined) {
       return res.status(400).json({
@@ -531,7 +534,7 @@ app.post('/api/risk-assessments', async (req, res) => {
     const assessment = await riskAssessmentService.createAssessment({
       userId,
       overallRisk,
-      diseaseName,
+      diseaseId,
       matchCount,
       matchedGenes,
       riskPercentage

@@ -147,8 +147,34 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
+        // Cache for disease categories
+        let diseaseCategories = [];
+
+        async function loadDiseaseCategories() {
+            try {
+                diseaseCategories = await BackendAPI.getDiseaseCategories();
+                console.log('Disease categories loaded:', diseaseCategories);
+            } catch (error) {
+                console.error('Failed to load disease categories:', error);
+                diseaseCategories = [];
+            }
+        }
+
+        function getDiseaseName(diseaseId) {
+            const disease = diseaseCategories.find(d => d.id === diseaseId);
+            return disease ? disease.name : 'Unknown Disease';
+        }
+
+        function getHospitalId(diseaseId) {
+            const disease = diseaseCategories.find(d => d.id === diseaseId);
+            return disease ? disease.hospitalId : 'Unknown';
+        }
+
         async function loadResults() {
             try {
+                // First load disease categories to map IDs to names
+                await loadDiseaseCategories();
+                
                 // Retrieve ALL risk assessments for this user
                 console.log('=== Fetching risk assessments from database ===');
                 const assessments = await BackendAPI.getRiskAssessments(user.id);
@@ -198,6 +224,9 @@
             const assessmentCards = sortedAssessments.map((assessment, index) => {
                 const overallRisk = Math.round(assessment.overallRisk);
                 
+                // Look up disease name from disease ID
+                const diseaseName = getDiseaseName(assessment.diseaseId);
+                
                 // Determine risk level and color
                 let riskLevel, riskColor;
                 if (overallRisk < 30) {
@@ -225,10 +254,19 @@
                     ? ` Matching genes: ${matchedGenes.join(', ')}.` 
                     : '';
 
+                const hospitalId = getHospitalId(assessment.diseaseId);
+
                 return `
                     <div class="card text-center" style="margin-bottom: var(--space-2xl);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
-                            <h2 class="card-title">${assessment.diseaseName || 'Unknown Disease'}</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-lg);">
+                            <div style="text-align: left;">
+                                <h2 class="card-title" style="text-align: left;">${diseaseName}</h2>
+                                <div class="text-secondary text-sm" style="margin-top: var(--space-xs); text-align: left;">
+                                    <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                                        🏥 Provider: ${hospitalId}
+                                    </span>
+                                </div>
+                            </div>
                             <span class="text-secondary text-sm">
                                 ${UI.formatDateTime(assessment.createdAt)}
                             </span>
@@ -247,7 +285,7 @@
                         </div>
                         
                         <p class="text-secondary">
-                            Your genetic risk for ${assessment.diseaseName} is <strong style="color: ${riskColor};">${riskLevel.toLowerCase()}</strong>. 
+                            Your genetic risk for ${diseaseName} is <strong style="color: ${riskColor};">${riskLevel.toLowerCase()}</strong>. 
                             ${assessment.matchCount} gene(s) match, resulting in a ${overallRisk}% intersection score.${geneList}
                         </p>
                     </div>

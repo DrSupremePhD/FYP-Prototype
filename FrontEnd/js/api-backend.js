@@ -124,7 +124,7 @@ const BackendAPI = {
                     id: 'local_' + Date.now(),
                     userId: userId,
                     overallRisk: r.result.riskPercentage,
-                    diseaseName: r.result.selectedDiseaseName,
+                    diseaseId: r.disease,
                     matchCount: r.result.matchCount,
                     matchedGenes: r.result.matches,
                     riskPercentage: r.result.riskPercentage,
@@ -156,7 +156,7 @@ const BackendAPI = {
             return assessments;
         } catch (error) {
             console.error('Error fetching risk assessments:', error);
-            
+
             // Fallback to localStorage
             console.log('Falling back to localStorage');
             const stored = localStorage.getItem('psiResult');
@@ -166,7 +166,7 @@ const BackendAPI = {
                     id: 'local_' + Date.now(),
                     userId: userId,
                     overallRisk: r.result.riskPercentage,
-                    diseaseName: r.result.selectedDiseaseName,
+                    diseaseId: r.disease,
                     matchCount: r.result.matchCount,
                     matchedGenes: r.result.matches,
                     riskPercentage: r.result.riskPercentage,
