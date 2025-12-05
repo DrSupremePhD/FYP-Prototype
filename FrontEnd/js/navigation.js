@@ -64,9 +64,10 @@ const Navigation = {
         const userEmailElements = document.querySelectorAll('[data-user-email]');
         const userRoleElements = document.querySelectorAll('[data-user-role]');
 
-        const fullName = user.firstName && user.lastName
-            ? `${user.firstName} ${user.lastName}`
-            : user.email;
+        // ✅ FIXED: Handle both snake_case (backend) and camelCase (frontend)
+        const firstName = user.first_name || user.firstName || '';
+        const lastName = user.last_name || user.lastName || '';
+        const fullName = `${firstName} ${lastName}`.trim() || user.email.split('@')[0] || user.email;
 
         userNameElements.forEach(el => {
             el.textContent = fullName;

@@ -156,9 +156,16 @@
                 <li>Any combination of the above</li>
             </ul>
             <br>
-            <h3>Examples</h3>
 
-
+            <h3>Rules</h3>
+            <ul>
+                <li>Only valid gene symbols (letters, numbers, hyphens, underscores)</li>
+                <li>Maximum of <strong>700 gene symbols</strong> per file</li>
+                <li>Blank lines and lines starting with <code>#</code> are ignored</li>
+                <li>Duplicate gene symbols are automatically removed</li>
+            </ul>
+            <br>
+            <h3>Good Examples</h3>
             <pre class="example-block good">
     GOOD (comma or space):
     BRCA1, TP53, EGFR, VEGFA APOE MTHFR
@@ -176,14 +183,8 @@
     APOE, MTHFR COMT
             </pre>
             <br>
-            <h3>Rules</h3>
-            <ul>
-                <li>Only valid gene symbols (letters, numbers, hyphens, underscores)</li>
-                <li>Maximum of <strong>700 gene symbols</strong> per file</li>
-                <li>Blank lines and lines starting with <code>#</code> are ignored</li>
-                <li>Duplicate gene symbols are automatically removed</li>
-            </ul>
-            <br>
+
+            
             <h3>Bad Examples</h3>
             <pre class="example-block bad">
     BAD:
@@ -286,110 +287,6 @@
             uploadBtn.disabled = true;
             document.getElementById('progressBar').style.display = 'none';
         });
-
-/*
-        // Function to process gene data file
-        async function parseGeneFile(file, maxGenes = 100) {
-            const text = await file.text();
-
-
-            const valid = [];
-            const invalid = [];
-
-
-            const MAX_GENES = maxGenes;
-            let exceededLimit = false;
-
-
-            // Split original file into real lines
-            const lines = text.split(/\r?\n/);
-
-
-            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-                if (exceededLimit) break;   // Stop processing further lines
-
-
-                let originalLine = lines[lineIndex];
-                let line = originalLine.trim();
-
-
-                // Skip empty lines or comment lines
-                if (!line || line.startsWith("#")) continue;
-
-
-                // Normalize separators inside this line
-                let normalized = line
-                    .replace(/,/g, " ")
-                    .replace(/\t/g, " ")
-                    .replace(/ +/g, " ")
-                    .trim();
-
-
-                // Split into tokens
-                const tokens = normalized.split(" ");
-
-
-                for (let t = 0; t < tokens.length; t++) {
-                    if (exceededLimit) break;
-
-
-                    const token = tokens[t];
-                    if (token === "") continue;
-
-
-                    const original = token;
-
-
-                    // Validate gene symbol
-                    if (/^[A-Za-z0-9\-_.]+$/.test(token)) {
-                        valid.push(token.toUpperCase());
-
-
-                        // Check limit BEFORE de-duplication (to catch abuse attempts)
-                        if (valid.length > MAX_GENES) {
-                            exceededLimit = true;
-
-
-                            invalid.push({
-                                lineNumber: lineIndex + 1,
-                                value: original,
-                                reason: `Gene limit exceeded (max ${MAX_GENES})`
-                            });
-
-
-                            break;
-                        }
-
-
-                    } else {
-                        invalid.push({
-                            lineNumber: lineIndex + 1,
-                            value: original,
-                            reason: "Invalid characters in gene symbol"
-                        });
-                    }
-                }
-            }
-
-
-            // Remove duplicates while preserving order
-            const seen = new Set();
-            const uniqueValid = valid.filter(g => {
-                if (seen.has(g)) return false;
-                seen.add(g);
-                return true;
-            });
-
-
-            // If limit exceeded after deduplication, shorten valid list
-            if (uniqueValid.length > MAX_GENES) {
-                uniqueValid.length = MAX_GENES; // trim down to 700
-            }
-
-
-            return { valid: uniqueValid, invalid, exceededLimit };
-        }
-*/
 
         uploadBtn.addEventListener('click', async () => {
             if (!selectedFile) return;

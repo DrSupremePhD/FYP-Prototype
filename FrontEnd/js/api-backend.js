@@ -1,6 +1,6 @@
 // ===================================
 // PRIVAGENE - BACKEND API SERVICE
-// Real backend integration for document storage
+// Real backend integration for document storage and user management
 // ===================================
 
 const BackendAPI = {
@@ -34,6 +34,199 @@ const BackendAPI = {
         } catch (error) {
             console.warn('Backend not available:', error.message);
             return false;
+        }
+    },
+
+    // ===================================
+    // USER MANAGEMENT
+    // ===================================
+
+    /**
+     * Get all users from the backend
+     * @param {Object} filters - Optional filters (role, status)
+     * @returns {Promise<Array>} Array of users
+     */
+    async getAllUsers(filters = {}) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, falling back to localStorage');
+            return Storage.get('users') || [];
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/users`;
+            const params = new URLSearchParams();
+
+            if (filters.role) params.append('role', filters.role);
+            if (filters.status) params.append('status', filters.status);
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch users');
+            }
+
+            const data = await response.json();
+            console.log('Users loaded from backend:', data);
+            return data.users || [];
+        } catch (error) {
+            console.error('Error fetching users from backend:', error);
+            // Fallback to localStorage
+            return Storage.get('users') || [];
+        }
+    },
+
+    /**
+     * Get user by ID
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} User object
+     */
+    async getUserById(userId) {
+        if (!this.config.enabled) {
+            return Storage.getUserById(userId);
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch user');
+            }
+
+            const data = await response.json();
+            return data.user;
+        } catch (error) {
+            console.error('Error fetching user:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Update user status (approve, suspend, activate)
+     * @param {string} userId - User ID
+     * @param {string} status - New status (active, suspended, pending_approval)
+     * @returns {Promise<Object>} Updated user
+     */
+    async updateUserStatus(userId, status) {
+        if (!this.config.enabled) {
+            return Storage.updateUser(userId, { status });
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update user status');
+            }
+
+            const data = await response.json();
+            return data.user;
+        } catch (error) {
+            console.error('Error updating user status:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Suspend a user
+     * @param {string} userId - User ID
+     * @param {string} reason - Reason for suspension
+     * @returns {Promise<Object>} Updated user
+     */
+    async suspendUser(userId, reason = '') {
+        return await this.updateUserStatus(userId, 'suspended');
+    },
+
+    /**
+     * Activate a user
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} Updated user
+     */
+    async activateUser(userId) {
+        return await this.updateUserStatus(userId, 'active');
+    },
+
+    /**
+     * Delete a user
+     * @param {string} userId - User ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteUser(userId) {
+        if (!this.config.enabled) {
+            Storage.deleteUser(userId);
+            return true;
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to delete user');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Update user profile
+     * @param {string} userId - User ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<Object>} Updated user
+     */
+    async updateUser(userId, updates) {
+        if (!this.config.enabled) {
+            return Storage.updateUser(userId, updates);
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update user');
+            }
+
+            const data = await response.json();
+            return data.user;
+        } catch (error) {
+            console.error('Error updating user:', error);
+            throw error;
         }
     },
 
@@ -178,13 +371,11 @@ const BackendAPI = {
         }
     },
 
-
-
-
     // Generate a unique session ID for a risk assessment
     generateSessionId(userId, assessmentId) {
         return `assessment_${userId}_${assessmentId || Date.now()}`;
     },
+
 
     // ===================================
     // DOCUMENT UPLOAD
@@ -440,5 +631,6 @@ const BackendAPI = {
     }
 };
 
-// Export for use in other scripts
+// Make it available as both BackendAPI and API for compatibility
 window.BackendAPI = BackendAPI;
+window.API = BackendAPI;

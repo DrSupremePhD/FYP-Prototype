@@ -37,7 +37,7 @@
                 </li>
                 <li class="sidebar-item">
                     <a href="audit-logs.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📝</span>
+                        <span class="sidebar-link-icon">📋</span>
                         Audit Logs
                     </a>
                 </li>
@@ -49,7 +49,7 @@
                 </li>
                 <li class="sidebar-item">
                     <a href="security.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">🔐</span>
+                        <span class="sidebar-link-icon">🔒</span>
                         Security
                     </a>
                 </li>
@@ -74,10 +74,18 @@
             </div>
 
             <!-- Search -->
-            <div class="card" style="margin-bottom: var(--space-xl);">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <input type="search" id="searchUsers" class="form-control form-control-lg"
-                        placeholder="Search by name or email...">
+            <div class="search-container" style="margin-bottom: var(--space-xl);">
+                <div class="search-wrapper">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <input type="search" id="searchUsers" class="search-input" placeholder="Search by name, email, or role...">
+                    <button class="search-clear" id="clearSearch" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -117,9 +125,11 @@
         </div>
     </main>
 
+    <!-- ✅ FIXED: Changed from api-mock.js to api-backend.js -->
+    <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
-    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/api-backend.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
@@ -135,12 +145,14 @@
         async function loadUsers() {
             UI.showLoading('Loading users...');
             try {
+                // ✅ FIXED: Now calls the real backend API
                 allUsers = await API.getAllUsers();
+                console.log('Loaded users:', allUsers); // Debug log
                 displayUsers(allUsers);
                 updateStats(allUsers);
             } catch (error) {
                 console.error('Error loading users:', error);
-                UI.showAlert('Failed to load users', 'error');
+                UI.showAlert('Failed to load users: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -182,15 +194,17 @@
                         <tbody>
                             ${users.map(u => `
                                 <tr>
-                                    <td>${u.firstName || ''} ${u.lastName || ''}</td>
+                                    <td>${u.first_name || u.firstName || ''} ${u.last_name || u.lastName || ''}</td>
                                     <td>${u.email}</td>
                                     <td><span class="badge badge-info">${Navigation.formatRole(u.role)}</span></td>
                                     <td>
                                         ${u.status === 'suspended'
                     ? '<span class="badge badge-error">Suspended</span>'
-                    : '<span class="badge badge-success">Active</span>'}
+                    : u.status === 'pending_approval'
+                        ? '<span class="badge badge-warning">Pending</span>'
+                        : '<span class="badge badge-success">Active</span>'}
                                     </td>
-                                    <td class="text-secondary text-sm">${UI.formatDate(u.createdAt)}</td>
+                                    <td class="text-secondary text-sm">${UI.formatDate(u.created_at || u.createdAt)}</td>
                                     <td>
                                         ${u.status === 'pending_approval'
                     ? `
@@ -227,7 +241,7 @@
                 await loadUsers();
             } catch (error) {
                 console.error('Error suspending user:', error);
-                UI.showAlert('Failed to suspend user', 'error');
+                UI.showAlert('Failed to suspend user: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -244,7 +258,7 @@
                 await loadUsers();
             } catch (error) {
                 console.error('Error activating user:', error);
-                UI.showAlert('Failed to activate user', 'error');
+                UI.showAlert('Failed to activate user: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -260,12 +274,12 @@
 
             UI.showLoading('Deleting user...');
             try {
-                Storage.deleteUser(userId);
+                await API.deleteUser(userId);
                 UI.showAlert('User deleted successfully', 'success');
                 await loadUsers();
             } catch (error) {
                 console.error('Error deleting user:', error);
-                UI.showAlert('Failed to delete user', 'error');
+                UI.showAlert('Failed to delete user: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -281,19 +295,12 @@
 
             UI.showLoading('Approving user...');
             try {
-                // Update user status to active
-                const users = Storage.get('users') || [];
-                const user = users.find(u => u.id === userId);
-                if (user) {
-                    user.status = 'active';
-                    Storage.set('users', users);
-                }
-
+                await API.updateUserStatus(userId, 'active');
                 UI.showAlert('User approved successfully', 'success');
                 await loadUsers();
             } catch (error) {
                 console.error('Error approving user:', error);
-                UI.showAlert('Failed to approve user', 'error');
+                UI.showAlert('Failed to approve user: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -309,12 +316,12 @@
 
             UI.showLoading('Rejecting user...');
             try {
-                Storage.deleteUser(userId);
+                await API.deleteUser(userId);
                 UI.showAlert('User rejected and removed', 'success');
                 await loadUsers();
             } catch (error) {
                 console.error('Error rejecting user:', error);
-                UI.showAlert('Failed to reject user', 'error');
+                UI.showAlert('Failed to reject user: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
@@ -327,16 +334,56 @@
         window.approveUser = approveUser;
         window.rejectUser = rejectUser;
 
-        // Search functionality
-        document.getElementById('searchUsers').addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            const filtered = allUsers.filter(u =>
-                u.email.toLowerCase().includes(query) ||
-                (u.firstName && u.firstName.toLowerCase().includes(query)) ||
-                (u.lastName && u.lastName.toLowerCase().includes(query))
-            );
+        // Search functionality - FIXED for full name search
+        const searchInput = document.getElementById('searchUsers');
+        const clearButton = document.getElementById('clearSearch');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            
+            // Show/hide clear button
+            clearButton.style.display = query ? 'flex' : 'none';
+            
+            const filtered = allUsers.filter(u => {
+                // Get all searchable fields (with fallbacks)
+                const email = (u.email || '').toLowerCase();
+                const firstName = (u.first_name || u.firstName || '').toLowerCase();
+                const lastName = (u.last_name || u.lastName || '').toLowerCase();
+                const fullName = `${firstName} ${lastName}`.trim();
+                const fullNameReverse = `${lastName} ${firstName}`.trim();
+                const role = (u.role || '').toLowerCase();
+                
+                // Check if query matches any field
+                return email.includes(query) ||
+                    firstName.includes(query) ||
+                    lastName.includes(query) ||
+                    fullName.includes(query) ||           // NEW: Search full name
+                    fullNameReverse.includes(query) ||   // NEW: Search "Last First"
+                    role.includes(query);
+            });
+            
             displayUsers(filtered);
             updateStats(filtered);
+        });
+
+        // Clear search
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            clearButton.style.display = 'none';
+            displayUsers(allUsers);
+            updateStats(allUsers);
+            searchInput.focus();
+        });
+
+        loadUsers();
+
+        // Clear search
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            clearButton.style.display = 'none';
+            displayUsers(allUsers);
+            updateStats(allUsers);
+            searchInput.focus();
         });
 
         loadUsers();
