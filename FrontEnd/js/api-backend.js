@@ -376,7 +376,6 @@ const BackendAPI = {
         return `assessment_${userId}_${assessmentId || Date.now()}`;
     },
 
-
     // ===================================
     // DOCUMENT UPLOAD
     // ===================================
@@ -628,9 +627,301 @@ const BackendAPI = {
         }
 
         return new Blob([content], { type: mimeType });
+    },
+
+    // ===================================
+    // GENE ENTRIES MANAGEMENT (Hospital)
+    // ===================================
+
+    /**
+     * Get all gene entries for a hospital
+     * @param {string} hospitalId - Hospital ID
+     * @returns {Promise<Array>} Array of gene entries
+     */
+    async getGeneEntries(hospitalId) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty entries');
+            return [];
+        }
+
+        try {
+            const url = hospitalId 
+                ? `${this.config.baseURL}/api/genes?hospital_id=${encodeURIComponent(hospitalId)}`
+                : `${this.config.baseURL}/api/genes`;
+                
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get gene entries');
+            }
+
+            const data = await response.json();
+            return data.entries || [];
+        } catch (error) {
+            console.error('Error fetching gene entries:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get unique diseases for a hospital
+     * @param {string} hospitalId - Hospital ID
+     * @returns {Promise<Array>} Array of unique diseases
+     */
+    async getUniqueDiseases(hospitalId) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty diseases');
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/genes/diseases?hospital_id=${encodeURIComponent(hospitalId)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to get diseases');
+            }
+
+            const data = await response.json();
+            return data.diseases || [];
+        } catch (error) {
+            console.error('Error fetching diseases:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Search gene entries
+     * @param {string} hospitalId - Hospital ID
+     * @param {string} searchTerm - Search term
+     * @returns {Promise<Array>} Array of matching entries
+     */
+    async searchGeneEntries(hospitalId, searchTerm) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/genes/search?hospital_id=${encodeURIComponent(hospitalId)}&q=${encodeURIComponent(searchTerm)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to search gene entries');
+            }
+
+            const data = await response.json();
+            return data.entries || [];
+        } catch (error) {
+            console.error('Error searching gene entries:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get a single gene entry by ID
+     * @param {string} id - Gene entry ID
+     * @returns {Promise<Object>} Gene entry
+     */
+    async getGeneEntry(id) {
+        if (!this.config.enabled) {
+            throw new Error('Backend disabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get gene entry');
+            }
+
+            const data = await response.json();
+            return data.entry;
+        } catch (error) {
+            console.error('Error fetching gene entry:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Create a new gene entry
+     * @param {Object} data - Gene entry data
+     * @returns {Promise<Object>} Created gene entry
+     */
+    async createGeneEntry(data) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, skipping gene entry creation');
+            return { success: false };
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/genes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create gene entry');
+            }
+
+            const result = await response.json();
+            console.log('Gene entry created:', result);
+            return result;
+        } catch (error) {
+            console.error('Error creating gene entry:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Update a gene entry
+     * @param {string} id - Gene entry ID
+     * @param {Object} data - Updated data
+     * @returns {Promise<Object>} Updated gene entry
+     */
+    async updateGeneEntry(id, data) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, skipping gene entry update');
+            return { success: false };
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update gene entry');
+            }
+
+            const result = await response.json();
+            console.log('Gene entry updated:', result);
+            return result;
+        } catch (error) {
+            console.error('Error updating gene entry:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Delete a gene entry
+     * @param {string} id - Gene entry ID
+     * @returns {Promise<Object>} Deletion result
+     */
+    async deleteGeneEntry(id) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, skipping gene entry deletion');
+            return { success: false };
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete gene entry');
+            }
+
+            const result = await response.json();
+            console.log('Gene entry deleted:', result);
+            return result;
+        } catch (error) {
+            console.error('Error deleting gene entry:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Upload CSV file with gene entries
+     * @param {File} file - CSV file
+     * @param {string} hospitalId - Hospital ID
+     * @returns {Promise<Object>} Upload result with inserted/skipped counts
+     */
+    async uploadGeneEntriesCSV(file, hospitalId) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, skipping CSV upload');
+            return { success: false };
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('hospital_id', hospitalId);
+
+            const response = await fetch(`${this.config.baseURL}/api/genes/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to upload CSV');
+            }
+
+            const result = await response.json();
+            console.log('CSV upload result:', result);
+            return result;
+        } catch (error) {
+            console.error('Error uploading CSV:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Generate SHA-256 hash preview for a gene symbol (client-side)
+     * This is the same algorithm used by the backend
+     * @param {string} geneSymbol - Gene symbol to hash
+     * @returns {Promise<string>} SHA-256 hash
+     */
+    async generateHashPreview(geneSymbol) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(geneSymbol.toUpperCase());
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 };
 
 // Make it available as both BackendAPI and API for compatibility
 window.BackendAPI = BackendAPI;
 window.API = BackendAPI;
+
+

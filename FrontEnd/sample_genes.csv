@@ -1,0 +1,19 @@
+disease_name,disease_code,gene_symbol,description
+Breast Cancer,BRCA-RISK,BRCA1,Breast cancer susceptibility gene 1
+Breast Cancer,BRCA-RISK,BRCA2,Breast cancer susceptibility gene 2
+Breast Cancer,BRCA-RISK,TP53,Tumor protein p53
+Breast Cancer,BRCA-RISK,PALB2,Partner and localizer of BRCA2
+Alzheimer's Disease,ALZ-RISK,APOE,Apolipoprotein E - major genetic risk factor
+Alzheimer's Disease,ALZ-RISK,APP,Amyloid precursor protein
+Alzheimer's Disease,ALZ-RISK,PSEN1,Presenilin 1
+Cardiovascular Disease,CVD-RISK,LDLR,Low density lipoprotein receptor
+Cardiovascular Disease,CVD-RISK,PCSK9,Proprotein convertase subtilisin/kexin type 9
+Cardiovascular Disease,CVD-RISK,APOB,Apolipoprotein B
+Type 2 Diabetes,T2D-RISK,TCF7L2,Transcription factor 7-like 2
+Type 2 Diabetes,T2D-RISK,FTO,Fat mass and obesity-associated protein
+Type 2 Diabetes,T2D-RISK,KCNJ11,Potassium channel gene
+Colorectal Cancer,CRC-RISK,APC,Adenomatous polyposis coli
+Colorectal Cancer,CRC-RISK,MLH1,MutL homolog 1
+Colorectal Cancer,CRC-RISK,MSH2,MutS homolog 2
+
+

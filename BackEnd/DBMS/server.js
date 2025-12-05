@@ -15,6 +15,9 @@ const diseaseService = require('./services/diseaseService');
 // For risk assessment
 const riskAssessmentService = require('./services/riskAssessmentService');
 
+// For gene entries (hospital gene management)
+const geneEntryService = require('./services/geneEntryService');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -630,3 +633,354 @@ app.delete('/api/risk-assessments/:assessmentId', async (req, res) => {
     });
   }
 });
+
+// ===================================
+// GENE ENTRIES MANAGEMENT ENDPOINTS
+// ===================================
+
+// Get all gene entries for a hospital
+app.get('/api/genes', async (req, res) => {
+  try {
+    const hospitalId = req.query.hospital_id;
+    
+    let entries;
+    if (hospitalId) {
+      entries = await geneEntryService.getGeneEntriesByHospital(hospitalId);
+    } else {
+      entries = await geneEntryService.getAllGeneEntries();
+    }
+
+    return res.json({
+      success: true,
+      count: entries.length,
+      entries
+    });
+  } catch (err) {
+    console.error('Get gene entries error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve gene entries',
+      message: err.message
+    });
+  }
+});
+
+// Get unique diseases for a hospital
+app.get('/api/genes/diseases', async (req, res) => {
+  try {
+    const hospitalId = req.query.hospital_id;
+    
+    if (!hospitalId) {
+      return res.status(400).json({
+        error: 'Missing hospital_id parameter'
+      });
+    }
+
+    const diseases = await geneEntryService.getUniqueDiseases(hospitalId);
+
+    return res.json({
+      success: true,
+      count: diseases.length,
+      diseases
+    });
+  } catch (err) {
+    console.error('Get diseases error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve diseases',
+      message: err.message
+    });
+  }
+});
+
+// Search gene entries
+app.get('/api/genes/search', async (req, res) => {
+  try {
+    const { hospital_id, q } = req.query;
+    
+    if (!hospital_id) {
+      return res.status(400).json({
+        error: 'Missing hospital_id parameter'
+      });
+    }
+
+    if (!q) {
+      // If no search term, return all entries
+      const entries = await geneEntryService.getGeneEntriesByHospital(hospital_id);
+      return res.json({
+        success: true,
+        count: entries.length,
+        entries
+      });
+    }
+
+    const entries = await geneEntryService.searchGeneEntries(hospital_id, q);
+
+    return res.json({
+      success: true,
+      count: entries.length,
+      entries
+    });
+  } catch (err) {
+    console.error('Search gene entries error:', err);
+    return res.status(500).json({
+      error: 'Failed to search gene entries',
+      message: err.message
+    });
+  }
+});
+
+// Get a single gene entry by ID
+app.get('/api/genes/:id', async (req, res) => {
+  try {
+    const entry = await geneEntryService.getGeneEntryById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({
+        error: 'Gene entry not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      entry
+    });
+  } catch (err) {
+    console.error('Get gene entry error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve gene entry',
+      message: err.message
+    });
+  }
+});
+
+// Create a new gene entry
+app.post('/api/genes', async (req, res) => {
+  try {
+    const { hospital_id, disease_name, disease_code, gene_symbol, description } = req.body;
+
+    // Validate required fields
+    if (!hospital_id || !disease_name || !disease_code || !gene_symbol) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['hospital_id', 'disease_name', 'disease_code', 'gene_symbol']
+      });
+    }
+
+    // Check for duplicate
+    const isDuplicate = await geneEntryService.checkDuplicateEntry(
+      hospital_id,
+      disease_code,
+      gene_symbol
+    );
+
+    if (isDuplicate) {
+      return res.status(409).json({
+        error: 'Duplicate entry',
+        message: `Gene ${gene_symbol} already exists for disease code ${disease_code}`
+      });
+    }
+
+    const entry = await geneEntryService.createGeneEntry({
+      hospital_id,
+      disease_name,
+      disease_code,
+      gene_symbol,
+      description
+    });
+
+    return res.status(201).json({
+      success: true,
+      entry,
+      message: 'Gene entry created successfully'
+    });
+  } catch (err) {
+    console.error('Create gene entry error:', err);
+    return res.status(500).json({
+      error: 'Failed to create gene entry',
+      message: err.message
+    });
+  }
+});
+
+// Update a gene entry
+app.put('/api/genes/:id', async (req, res) => {
+  try {
+    const entry = await geneEntryService.updateGeneEntry(req.params.id, req.body);
+
+    if (!entry) {
+      return res.status(404).json({
+        error: 'Gene entry not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      entry,
+      message: 'Gene entry updated successfully'
+    });
+  } catch (err) {
+    console.error('Update gene entry error:', err);
+    return res.status(500).json({
+      error: 'Failed to update gene entry',
+      message: err.message
+    });
+  }
+});
+
+// Delete a gene entry
+app.delete('/api/genes/:id', async (req, res) => {
+  try {
+    const deleted = await geneEntryService.deleteGeneEntry(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        error: 'Gene entry not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Gene entry deleted successfully'
+    });
+  } catch (err) {
+    console.error('Delete gene entry error:', err);
+    return res.status(500).json({
+      error: 'Failed to delete gene entry',
+      message: err.message
+    });
+  }
+});
+
+// Bulk upload gene entries from CSV
+app.post('/api/genes/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No file uploaded',
+        hint: 'Use multipart/form-data with field name "file"'
+      });
+    }
+
+    const hospitalId = req.body.hospital_id;
+    if (!hospitalId) {
+      return res.status(400).json({
+        error: 'Missing hospital_id',
+        hint: 'Include hospital_id in form data'
+      });
+    }
+
+    // Check file type
+    const fileName = req.file.originalname.toLowerCase();
+    if (!fileName.endsWith('.csv')) {
+      return res.status(400).json({
+        error: 'Invalid file type',
+        hint: 'Only CSV files are supported'
+      });
+    }
+
+    // Parse CSV content
+    const content = req.file.buffer.toString('utf-8');
+    const lines = content.split(/\r?\n/).filter(line => line.trim());
+
+    if (lines.length < 2) {
+      return res.status(400).json({
+        error: 'Invalid CSV file',
+        hint: 'File must have a header row and at least one data row'
+      });
+    }
+
+    // Parse header
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const requiredColumns = ['disease_name', 'disease_code', 'gene_symbol'];
+    const missingColumns = requiredColumns.filter(col => !header.includes(col));
+
+    if (missingColumns.length > 0) {
+      return res.status(400).json({
+        error: 'Missing required columns',
+        missing: missingColumns,
+        hint: 'CSV must have columns: disease_name, disease_code, gene_symbol, description (optional)'
+      });
+    }
+
+    // Parse data rows
+    const entries = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i]);
+      if (values.length === 0) continue;
+
+      const entry = {};
+      header.forEach((col, index) => {
+        entry[col] = values[index] || '';
+      });
+
+      entries.push(entry);
+    }
+
+    // Bulk insert
+    const result = await geneEntryService.bulkInsertGeneEntries(entries, hospitalId);
+
+    return res.json({
+      success: true,
+      inserted: result.inserted,
+      skipped: result.skipped,
+      total: entries.length,
+      errors: result.errors.slice(0, 10), // Limit errors in response
+      message: `Successfully inserted ${result.inserted} entries, skipped ${result.skipped}`
+    });
+  } catch (err) {
+    console.error('CSV upload error:', err);
+    return res.status(500).json({
+      error: 'Failed to process CSV upload',
+      message: err.message
+    });
+  }
+});
+
+// Generate hash preview (utility endpoint)
+app.post('/api/genes/hash-preview', (req, res) => {
+  try {
+    const { gene_symbol } = req.body;
+
+    if (!gene_symbol) {
+      return res.status(400).json({
+        error: 'Missing gene_symbol'
+      });
+    }
+
+    const hash = geneEntryService.generateHash(gene_symbol);
+
+    return res.json({
+      success: true,
+      gene_symbol: gene_symbol.toUpperCase(),
+      hash_value: hash
+    });
+  } catch (err) {
+    console.error('Hash preview error:', err);
+    return res.status(500).json({
+      error: 'Failed to generate hash',
+      message: err.message
+    });
+  }
+});
+
+// Helper function to parse CSV line (handles quoted values)
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}

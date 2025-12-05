@@ -154,3 +154,22 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
 
 CREATE INDEX IF NOT EXISTS idx_risk_assessments_user ON risk_assessments(user_id);
 CREATE INDEX IF NOT EXISTS idx_risk_assessments_created ON risk_assessments(created_at DESC);
+
+-- gene_entries table: stores disease-gene records for hospital PSI
+CREATE TABLE IF NOT EXISTS gene_entries (
+  id TEXT PRIMARY KEY,
+  hospital_id TEXT NOT NULL,
+  disease_name TEXT NOT NULL,
+  disease_code TEXT NOT NULL,
+  gene_symbol TEXT NOT NULL,
+  description TEXT,
+  hash_value TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (hospital_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_gene_entries_hospital ON gene_entries(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_gene_entries_disease_code ON gene_entries(disease_code);
+CREATE INDEX IF NOT EXISTS idx_gene_entries_gene_symbol ON gene_entries(gene_symbol);
+CREATE INDEX IF NOT EXISTS idx_gene_entries_created ON gene_entries(created_at DESC);
