@@ -48,12 +48,12 @@ const diseaseService = {
     }
   ],
 
-  // Get all disease categories (matches Python get_disease_categories)
+  // Get all disease categories 
   getDiseaseCategories() {
     return this.disease_categories;
   },
 
-  // Get disease genes by ID (matches Python get_disease_genes)
+  // Get disease genes by ID 
   getDiseaseGenes(diseaseId) {
     const disease = this.disease_categories.find(d => d.id === diseaseId);
     if (!disease) {

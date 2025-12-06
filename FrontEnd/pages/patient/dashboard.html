@@ -111,11 +111,19 @@
             </div>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-4 gap-lg" style="margin-bottom: var(--space-2xl);">
-                <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Gene Files Uploaded</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--primary-color);"
-                        id="uploadCount">0</div>
+            <div class="grid grid-cols-2 gap-lg" style="margin-bottom: var(--space-2xl);">
+                <div class="card" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" 
+                    onclick="window.location.href='upload-gene.html'"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)'">
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Uploaded Gene File</div>
+                    <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--primary-color); word-break: break-word;" id="uploadFileName">
+                        No File Uploaded
+                    </div>
+
+                    <div class="text-tertiary text-xs" style="margin-top: var(--space-xs);">
+                        Click to upload/change file
+                    </div>
                 </div>
 
                 <div class="card">
@@ -123,25 +131,13 @@
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--secondary-color);"
                         id="assessmentCount">0</div>
                 </div>
-
-                <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Upcoming Appointments
-                    </div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--accent-color);"
-                        id="appointmentCount">0</div>
-                </div>
-
-                <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Overall Risk</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700;" id="overallRisk">-</div>
-                </div>
             </div>
 
             <!-- Recent Activity & Upcoming Appointments -->
-            <div class="grid grid-cols-2 gap-xl">
+            <div class="grid grid-cols-1 gap-xl">
                 <!-- Recent Results -->
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header" id="recentRiskAssessments">
                         <h3 class="card-title">Recent Risk Assessments</h3>
                     </div>
                     <div id="recentResults">
@@ -149,15 +145,7 @@
                     </div>
                 </div>
 
-                <!-- Upcoming Appointments -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Upcoming Appointments</h3>
-                    </div>
-                    <div id="upcomingAppointments">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
+
             </div>
         </div>
     </main>
@@ -166,7 +154,10 @@
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/api-backend.js"></script>
+    <script src="../../js/gene-utils.js"></script>
+    <!--
     <script src="../../js/api-mock.js"></script>
+    -->
     <script src="../../js/navigation.js"></script>
 
     <script>
@@ -174,6 +165,9 @@
         Auth.requireRole('patient');
 
         const user = Auth.getCurrentUser();
+
+        // Global variable
+        let diseaseCategories = [];
 
         // Display user info
         Navigation.displayUserInfo(user);
@@ -184,29 +178,89 @@
             Auth.logout();
         });
 
+        // Load disease categories
+        async function loadDiseaseCategories() {
+            try {
+                diseaseCategories = await API.getDiseaseCategories();
+                console.log('📚 Disease categories loaded:', diseaseCategories);
+            } catch (error) {
+                console.error('Failed to load disease categories:', error);
+            }
+        }
+
+        // Get uploaded gene file name from localStorage
+        function getUploadedGeneFileName() {
+            try {
+                // Use GeneUtils to get upload history
+                const uploads = GeneUtils.getUploadHistory();
+                
+                if (uploads && uploads.length > 0) {
+                    // Get the most recent upload
+                    const latestUpload = uploads[uploads.length - 1];
+                    return latestUpload.fileName;
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error reading gene file:', error);
+                return null;
+            }
+        }
+
         // Load dashboard data
         async function loadDashboard() {
+            console.log('🔍 Loading dashboard for user:', user);
+            
             try {
-                // BACKEND_INTEGRATION: These API calls will fetch from your backend
-                const uploads = await API.getGeneUploads(user.id);
+                // Load disease categories first
+                await loadDiseaseCategories();
+                
+                // Get gene file name
+                const geneFileName = getUploadedGeneFileName();
+                const fileNameElement = document.getElementById('uploadFileName');
+                
+                if (geneFileName) {
+                    fileNameElement.textContent = geneFileName;
+                    fileNameElement.style.color = 'var(--success-color)';
+                } else {
+                    fileNameElement.textContent = 'No File Uploaded';
+                    fileNameElement.style.color = 'var(--text-tertiary)';
+                }
+                
+                // Fetch risk assessments
+                console.log('🧬 Fetching risk assessments for user:', user.id);
                 const assessments = await API.getRiskAssessments(user.id);
-                const appointments = await API.getAppointments(user.id, 'patient');
+                console.log('✅ Risk assessments received:', assessments);
+                console.log('📊 Number of assessments:', assessments ? assessments.length : 0);
+                
 
-                // Update stats
-                document.getElementById('uploadCount').textContent = uploads.length;
+                // ✅ UPDATE STATS
+                //document.getElementById('uploadFileName').textContent = uploads.length;
                 document.getElementById('assessmentCount').textContent = assessments.length;
 
-                // Filter upcoming appointments
-                const now = new Date();
-                const upcoming = appointments.filter(apt =>
-                    new Date(apt.date) > now && apt.status !== 'cancelled'
-                );
-                document.getElementById('appointmentCount').textContent = upcoming.length;
 
-                // Show overall risk from most recent assessment
-                if (assessments.length > 0) {
-                    const latest = assessments[assessments.length - 1];
-                    const risk = latest.overallRisk;
+                // ✅ SHOW OVERALL RISK from most recent assessment
+                if (assessments && assessments.length > 0) {
+                    console.log('📈 Processing latest assessment...');
+                    
+                    // Sort to get the most recent
+                    const sortedByDate = [...assessments].sort((a, b) => {
+                        const dateA = new Date(a.created_at || a.createdAt);
+                        const dateB = new Date(b.created_at || b.createdAt);
+                        return dateB - dateA;
+                    });
+                    
+                    const latest = sortedByDate[0];
+                    console.log('Latest assessment:', latest);
+                    
+                    const risk = latest.overallRisk || 
+                                latest.overall_risk || 
+                                latest.riskPercentage || 
+                                latest.risk_percentage || 
+                                0;
+                    
+                    console.log('Risk value:', risk);
+                    
                     let color, level;
 
                     if (risk < 30) {
@@ -220,51 +274,82 @@
                         level = 'High';
                     }
 
-                    document.getElementById('overallRisk').innerHTML = `
-            <span style="color: ${color}">${risk}% ${level}</span>
-          `;
+                    document.getElementById('recentRiskAssessments').innerHTML;
+                        
+                } else {
+                    console.log('⚠️ No assessments found');
                 }
 
-                // Display recent results
-                displayRecentResults(assessments.slice(-3).reverse());
+                // ✅ DISPLAY RECENT RESULTS (sorted by date, newest first)
+                const sortedAssessments = assessments.sort((a, b) => {
+                    const dateA = new Date(a.created_at || a.createdAt);
+                    const dateB = new Date(b.created_at || b.createdAt);
+                    return dateB - dateA; // Newest first
+                });
+                displayRecentResults(sortedAssessments.slice(0, 3));
 
-                // Display upcoming appointments
-                displayUpcomingAppointments(upcoming.slice(0, 3));
 
             } catch (error) {
-                console.error('Error loading dashboard:', error);
-                UI.showAlert('Failed to load dashboard data', 'error');
+                console.error('❌ Error loading dashboard:', error);
+                console.error('Error stack:', error.stack);
+                UI.showAlert('Failed to load dashboard data: ' + error.message, 'error');
             }
         }
 
+        // Update displayRecentResults to use loaded categories
         function displayRecentResults(assessments) {
             const container = document.getElementById('recentResults');
 
-            if (assessments.length === 0) {
+            if (!assessments || assessments.length === 0) {
                 container.innerHTML = `
-          <div class="empty-state" style="padding: var(--space-xl);">
-            <div class="empty-state-icon">📊</div>
-            <div class="empty-state-description">No assessments yet</div>
-            <a href="disease-selection.html" class="btn btn-primary btn-sm">Start Assessment</a>
-          </div>
-        `;
+                    <div class="empty-state" style="padding: var(--space-xl);">
+                        <div class="empty-state-icon">📊</div>
+                        <div class="empty-state-description">No assessments yet</div>
+                        <a href="disease-selection.html" class="btn btn-primary btn-sm">Start Assessment</a>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = assessments.map(assessment => `
-        <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer;"
-             onclick="window.location.href='risk-results.html?id=${assessment.id}'">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 500;">${assessment.results.length} Disease Categories</div>
-              <div class="text-secondary text-sm">${UI.formatDate(assessment.computedAt)}</div>
-            </div>
-            <div class="risk-indicator risk-${assessment.overallRisk < 30 ? 'low' : assessment.overallRisk < 70 ? 'medium' : 'high'}">
-              ${assessment.overallRisk}% Risk
-            </div>
-          </div>
-        </div>
-      `).join('');
+            container.innerHTML = assessments.map(assessment => {
+                const risk = assessment.overallRisk || 
+                            assessment.overall_risk || 
+                            assessment.riskPercentage || 
+                            assessment.risk_percentage || 
+                            0;
+                
+                const date = assessment.computedAt || 
+                            assessment.computed_at || 
+                            assessment.createdAt || 
+                            assessment.created_at || 
+                            new Date();
+                
+                const diseaseId = assessment.diseaseId || 
+                                assessment.disease_id || 
+                                assessment.disease || 
+                                'Unknown';
+                
+                // Find disease name from loaded categories
+                const disease = diseaseCategories.find(d => d.id === diseaseId);
+                const diseaseName = disease ? disease.name : diseaseId;
+                
+                const riskLevel = risk < 30 ? 'low' : risk < 70 ? 'medium' : 'high';
+                
+                return `
+                    <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer;"
+                        onclick="window.location.href='risk-results.html?id=${assessment.id}'">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500;">${diseaseName}</div>
+                                <div class="text-secondary text-sm">${UI.formatDate(date)}</div>
+                            </div>
+                            <div class="risk-indicator risk-${riskLevel}">
+                                ${Math.round(risk)}% Risk
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function displayUpcomingAppointments(appointments) {
