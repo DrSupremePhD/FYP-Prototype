@@ -630,24 +630,24 @@ const BackendAPI = {
     },
 
     // ===================================
-    // GENE ENTRIES MANAGEMENT (Hospital)
+    // DISEASE MANAGEMENT (Hospital) - renamed from Gene Entries
     // ===================================
 
     /**
-     * Get all gene entries for a hospital
+     * Get all diseases for a hospital
      * @param {string} hospitalId - Hospital ID
-     * @returns {Promise<Array>} Array of gene entries
+     * @returns {Promise<Array>} Array of diseases
      */
-    async getGeneEntries(hospitalId) {
+    async getDiseases(hospitalId) {
         if (!this.config.enabled) {
-            console.log('Backend disabled, returning empty entries');
+            console.log('Backend disabled, returning empty diseases');
             return [];
         }
 
         try {
             const url = hospitalId 
-                ? `${this.config.baseURL}/api/genes?hospital_id=${encodeURIComponent(hospitalId)}`
-                : `${this.config.baseURL}/api/genes`;
+                ? `${this.config.baseURL}/api/diseases?hospital_id=${encodeURIComponent(hospitalId)}`
+                : `${this.config.baseURL}/api/diseases`;
                 
             const response = await fetch(url, {
                 method: 'GET',
@@ -657,13 +657,13 @@ const BackendAPI = {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to get gene entries');
+                throw new Error('Failed to get diseases');
             }
 
             const data = await response.json();
-            return data.entries || [];
+            return data.diseases || [];
         } catch (error) {
-            console.error('Error fetching gene entries:', error);
+            console.error('Error fetching diseases:', error);
             throw error;
         }
     },
@@ -681,7 +681,7 @@ const BackendAPI = {
 
         try {
             const response = await fetch(
-                `${this.config.baseURL}/api/genes/diseases?hospital_id=${encodeURIComponent(hospitalId)}`,
+                `${this.config.baseURL}/api/diseases/unique?hospital_id=${encodeURIComponent(hospitalId)}`,
                 {
                     method: 'GET',
                     headers: {
@@ -691,24 +691,24 @@ const BackendAPI = {
             );
 
             if (!response.ok) {
-                throw new Error('Failed to get diseases');
+                throw new Error('Failed to get unique diseases');
             }
 
             const data = await response.json();
             return data.diseases || [];
         } catch (error) {
-            console.error('Error fetching diseases:', error);
+            console.error('Error fetching unique diseases:', error);
             throw error;
         }
     },
 
     /**
-     * Search gene entries
+     * Search diseases
      * @param {string} hospitalId - Hospital ID
      * @param {string} searchTerm - Search term
-     * @returns {Promise<Array>} Array of matching entries
+     * @returns {Promise<Array>} Array of matching diseases
      */
-    async searchGeneEntries(hospitalId, searchTerm) {
+    async searchDiseases(hospitalId, searchTerm) {
         if (!this.config.enabled) {
             console.log('Backend disabled');
             return [];
@@ -716,7 +716,7 @@ const BackendAPI = {
 
         try {
             const response = await fetch(
-                `${this.config.baseURL}/api/genes/search?hospital_id=${encodeURIComponent(hospitalId)}&q=${encodeURIComponent(searchTerm)}`,
+                `${this.config.baseURL}/api/diseases/search?hospital_id=${encodeURIComponent(hospitalId)}&q=${encodeURIComponent(searchTerm)}`,
                 {
                     method: 'GET',
                     headers: {
@@ -726,29 +726,29 @@ const BackendAPI = {
             );
 
             if (!response.ok) {
-                throw new Error('Failed to search gene entries');
+                throw new Error('Failed to search diseases');
             }
 
             const data = await response.json();
-            return data.entries || [];
+            return data.diseases || [];
         } catch (error) {
-            console.error('Error searching gene entries:', error);
+            console.error('Error searching diseases:', error);
             throw error;
         }
     },
 
     /**
-     * Get a single gene entry by ID
-     * @param {string} id - Gene entry ID
-     * @returns {Promise<Object>} Gene entry
+     * Get a single disease by ID
+     * @param {string} id - Disease ID
+     * @returns {Promise<Object>} Disease
      */
-    async getGeneEntry(id) {
+    async getDisease(id) {
         if (!this.config.enabled) {
             throw new Error('Backend disabled');
         }
 
         try {
-            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+            const response = await fetch(`${this.config.baseURL}/api/diseases/${id}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -756,30 +756,30 @@ const BackendAPI = {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to get gene entry');
+                throw new Error('Failed to get disease');
             }
 
             const data = await response.json();
-            return data.entry;
+            return data.disease;
         } catch (error) {
-            console.error('Error fetching gene entry:', error);
+            console.error('Error fetching disease:', error);
             throw error;
         }
     },
 
     /**
-     * Create a new gene entry
-     * @param {Object} data - Gene entry data
-     * @returns {Promise<Object>} Created gene entry
+     * Create a new disease
+     * @param {Object} data - Disease data
+     * @returns {Promise<Object>} Created disease
      */
-    async createGeneEntry(data) {
+    async createDisease(data) {
         if (!this.config.enabled) {
-            console.log('Backend disabled, skipping gene entry creation');
+            console.log('Backend disabled, skipping disease creation');
             return { success: false };
         }
 
         try {
-            const response = await fetch(`${this.config.baseURL}/api/genes`, {
+            const response = await fetch(`${this.config.baseURL}/api/diseases`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -789,32 +789,32 @@ const BackendAPI = {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to create gene entry');
+                throw new Error(error.error || 'Failed to create disease');
             }
 
             const result = await response.json();
-            console.log('Gene entry created:', result);
+            console.log('Disease created:', result);
             return result;
         } catch (error) {
-            console.error('Error creating gene entry:', error);
+            console.error('Error creating disease:', error);
             throw error;
         }
     },
 
     /**
-     * Update a gene entry
-     * @param {string} id - Gene entry ID
+     * Update a disease
+     * @param {string} id - Disease ID
      * @param {Object} data - Updated data
-     * @returns {Promise<Object>} Updated gene entry
+     * @returns {Promise<Object>} Updated disease
      */
-    async updateGeneEntry(id, data) {
+    async updateDisease(id, data) {
         if (!this.config.enabled) {
-            console.log('Backend disabled, skipping gene entry update');
+            console.log('Backend disabled, skipping disease update');
             return { success: false };
         }
 
         try {
-            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+            const response = await fetch(`${this.config.baseURL}/api/diseases/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -824,31 +824,31 @@ const BackendAPI = {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to update gene entry');
+                throw new Error(error.error || 'Failed to update disease');
             }
 
             const result = await response.json();
-            console.log('Gene entry updated:', result);
+            console.log('Disease updated:', result);
             return result;
         } catch (error) {
-            console.error('Error updating gene entry:', error);
+            console.error('Error updating disease:', error);
             throw error;
         }
     },
 
     /**
-     * Delete a gene entry
-     * @param {string} id - Gene entry ID
+     * Delete a disease
+     * @param {string} id - Disease ID
      * @returns {Promise<Object>} Deletion result
      */
-    async deleteGeneEntry(id) {
+    async deleteDisease(id) {
         if (!this.config.enabled) {
-            console.log('Backend disabled, skipping gene entry deletion');
+            console.log('Backend disabled, skipping disease deletion');
             return { success: false };
         }
 
         try {
-            const response = await fetch(`${this.config.baseURL}/api/genes/${id}`, {
+            const response = await fetch(`${this.config.baseURL}/api/diseases/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -857,25 +857,25 @@ const BackendAPI = {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to delete gene entry');
+                throw new Error(error.error || 'Failed to delete disease');
             }
 
             const result = await response.json();
-            console.log('Gene entry deleted:', result);
+            console.log('Disease deleted:', result);
             return result;
         } catch (error) {
-            console.error('Error deleting gene entry:', error);
+            console.error('Error deleting disease:', error);
             throw error;
         }
     },
 
     /**
-     * Upload CSV file with gene entries
+     * Upload CSV file with diseases
      * @param {File} file - CSV file
      * @param {string} hospitalId - Hospital ID
      * @returns {Promise<Object>} Upload result with inserted/skipped counts
      */
-    async uploadGeneEntriesCSV(file, hospitalId) {
+    async uploadDiseasesCSV(file, hospitalId) {
         if (!this.config.enabled) {
             console.log('Backend disabled, skipping CSV upload');
             return { success: false };
@@ -886,7 +886,7 @@ const BackendAPI = {
             formData.append('file', file);
             formData.append('hospital_id', hospitalId);
 
-            const response = await fetch(`${this.config.baseURL}/api/genes/upload`, {
+            const response = await fetch(`${this.config.baseURL}/api/diseases/upload`, {
                 method: 'POST',
                 body: formData
             });

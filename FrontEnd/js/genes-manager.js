@@ -22,7 +22,7 @@ class GeneManager {
             const backendHealthy = await BackendAPI.checkHealth();
             
             if (backendHealthy) {
-                this.entries = await BackendAPI.getGeneEntries(this.user.id);
+                this.entries = await BackendAPI.getDiseases(this.user.id);
                 this.useBackend = true;
             } else {
                 // Fallback to localStorage
@@ -55,7 +55,7 @@ class GeneManager {
      * Load entries from localStorage
      */
     loadFromStorage() {
-        const stored = localStorage.getItem('geneEntries_' + this.user.id);
+        const stored = localStorage.getItem('diseases_' + this.user.id);
         return stored ? JSON.parse(stored) : [];
     }
 
@@ -63,7 +63,7 @@ class GeneManager {
      * Save entries to localStorage
      */
     saveToStorage() {
-        localStorage.setItem('geneEntries_' + this.user.id, JSON.stringify(this.entries));
+        localStorage.setItem('diseases_' + this.user.id, JSON.stringify(this.entries));
     }
 
     /**
@@ -80,10 +80,19 @@ class GeneManager {
         const uniqueDiseases = new Set(this.entries.map(e => e.disease_code));
         if (diseasesEl) diseasesEl.textContent = uniqueDiseases.size;
 
-        // Count unique genes
-        const uniqueGenes = new Set(this.entries.map(e => e.gene_symbol));
+        // Count unique genes (now handling arrays)
+        const uniqueGenes = new Set();
+        this.entries.forEach(entry => {
+            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+                entry.gene_symbols.forEach(symbol => uniqueGenes.add(symbol));
+            } else if (entry.gene_symbol) {
+                // Fallback for old single gene format
+                uniqueGenes.add(entry.gene_symbol);
+            }
+        });
         if (genesEl) genesEl.textContent = uniqueGenes.size;
     }
+
 
     /**
      * Add a new gene entry
@@ -92,8 +101,19 @@ class GeneManager {
      */
     async addEntry(data) {
         try {
-            const geneSymbol = data.gene_symbol.toUpperCase();
-            const hashValue = await BackendAPI.generateHashPreview(geneSymbol);
+            // Parse gene symbols from the input (comma-separated string to array)
+            let geneSymbolsArray = [];
+            if (data.gene_symbol) {
+                // Split by comma and clean up each symbol
+                geneSymbolsArray = data.gene_symbol
+                    .split(',')
+                    .map(s => s.trim().toUpperCase())
+                    .filter(s => s); // Remove empty strings
+            }
+
+            if (geneSymbolsArray.length === 0) {
+                throw new Error('Please provide at least one gene symbol');
+            }
             
             if (this.useBackend) {
                 // Use backend API
@@ -101,34 +121,62 @@ class GeneManager {
                     hospital_id: this.user.id,
                     disease_name: data.disease_name,
                     disease_code: data.disease_code,
-                    gene_symbol: geneSymbol,
+                    gene_symbols: geneSymbolsArray,
                     description: data.description || ''
                 };
 
-                const result = await BackendAPI.createGeneEntry(entryData);
+                console.log('Sending to backend:', entryData);
                 
+                const result = await BackendAPI.createDisease(entryData);
+                
+                console.log('Backend response:', result);
+                
+                // Handle different possible response formats from the backend
+                let entry = null;
+                
+                // Format 1: { success: true, entry: {...} }
                 if (result.success && result.entry) {
-                    this.entries.unshift(result.entry);
-                    this.filteredEntries = [...this.entries];
-                    this.renderTable();
-                    this.updateStats();
-                    this.showNotification('Gene entry added successfully', 'success');
-                    return result.entry;
+                    entry = result.entry;
+                }
+                // Format 2: { success: true, disease: {...} }
+                else if (result.success && result.disease) {
+                    entry = result.disease;
+                }
+                // Format 3: Direct entry object with id
+                else if (result.id && result.disease_name) {
+                    entry = result;
+                }
+                // Format 4: { disease: {...} } without success flag
+                else if (result.disease && result.disease.id) {
+                    entry = result.disease;
                 }
                 
-                throw new Error('Failed to create entry');
+                // Check if we got a valid entry
+                if (!entry || !entry.id) {
+                    console.error('Invalid response format:', result);
+                    throw new Error('Invalid response from server. Expected entry with id.');
+                }
+                
+                // Success - add to local array and update UI
+                this.entries.unshift(entry);
+                this.filteredEntries = [...this.entries];
+                this.renderTable();
+                this.updateStats();
+                this.showNotification('Gene entry added successfully', 'success');
+                return entry;
+                
             } else {
                 // Use localStorage fallback
+                const now = new Date().toISOString();
                 const newEntry = {
                     id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                     hospital_id: this.user.id,
                     disease_name: data.disease_name,
                     disease_code: data.disease_code,
-                    gene_symbol: geneSymbol,
+                    gene_symbols: geneSymbolsArray,
                     description: data.description || '',
-                    hash_value: hashValue,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
+                    created_at: now,
+                    updated_at: now
                 };
                 
                 this.entries.unshift(newEntry);
@@ -141,7 +189,24 @@ class GeneManager {
             }
         } catch (error) {
             console.error('Error adding entry:', error);
-            this.showNotification(error.message || 'Failed to add entry', 'error');
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // Provide helpful error messages
+            let errorMessage = error.message || 'Failed to add entry';
+            
+            // Check for common errors
+            if (error.message && error.message.includes('fetch')) {
+                errorMessage = 'Network error: Could not connect to backend server at ' + BackendAPI.config.baseURL;
+            } else if (error.message && error.message.includes('JSON')) {
+                errorMessage = 'Server returned invalid response format';
+            } else if (error.message && error.message.includes('Failed to create disease')) {
+                errorMessage = 'Server rejected the request: ' + error.message;
+            }
+            
+            this.showNotification(errorMessage, 'error');
             throw error;
         }
     }
@@ -165,7 +230,7 @@ class GeneManager {
                     description: data.description || ''
                 };
 
-                const result = await BackendAPI.updateGeneEntry(id, updateData);
+                const result = await BackendAPI.updateDisease(id, updateData);
                 
                 if (result.success && result.entry) {
                     const index = this.entries.findIndex(e => e.id === id);
@@ -223,7 +288,7 @@ class GeneManager {
         try {
             if (this.useBackend) {
                 // Use backend API
-                const result = await BackendAPI.deleteGeneEntry(id);
+                const result = await BackendAPI.deleteDisease(id);
                 
                 if (result.success) {
                     this.entries = this.entries.filter(e => e.id !== id);
@@ -261,7 +326,7 @@ class GeneManager {
         try {
             if (this.useBackend) {
                 // Use backend API
-                const result = await BackendAPI.uploadGeneEntriesCSV(file, this.user.id);
+                const result = await BackendAPI.uploadDiseasesCSV(file, this.user.id);
                 
                 if (result.success) {
                     await this.loadData();
@@ -389,12 +454,25 @@ class GeneManager {
             this.filteredEntries = [...this.entries];
         } else {
             const term = searchTerm.toLowerCase().trim();
-            this.filteredEntries = this.entries.filter(entry =>
-                entry.disease_name.toLowerCase().includes(term) ||
-                entry.disease_code.toLowerCase().includes(term) ||
-                entry.gene_symbol.toLowerCase().includes(term) ||
-                (entry.description && entry.description.toLowerCase().includes(term))
-            );
+            this.filteredEntries = this.entries.filter(entry => {
+                const matchDisease = entry.disease_name.toLowerCase().includes(term) ||
+                                    entry.disease_code.toLowerCase().includes(term);
+                
+                const matchDescription = entry.description && 
+                                        entry.description.toLowerCase().includes(term);
+                
+                // Check gene symbols (handle both array and single formats)
+                let matchGene = false;
+                if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+                    matchGene = entry.gene_symbols.some(symbol => 
+                        symbol.toLowerCase().includes(term)
+                    );
+                } else if (entry.gene_symbol) {
+                    matchGene = entry.gene_symbol.toLowerCase().includes(term);
+                }
+                
+                return matchDisease || matchGene || matchDescription;
+            });
         }
         
         this.renderTable();
@@ -425,29 +503,46 @@ class GeneManager {
             return;
         }
 
-        tableBody.innerHTML = this.filteredEntries.map(entry => `
-            <tr>
-                <td><strong>${this.escapeHtml(entry.disease_name)}</strong></td>
-                <td><code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">${this.escapeHtml(entry.disease_code)}</code></td>
-                <td><span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span></td>
-                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(entry.description || '')}">
-                    ${this.escapeHtml(entry.description) || '<em style="color: var(--text-tertiary);">No description</em>'}
-                </td>
-                <td style="white-space: nowrap;">${this.formatDate(entry.created_at)}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button onclick="modalManager.openGeneModal('${entry.id}')" 
-                                class="btn btn-small btn-outline" title="Edit">
-                            ✏️
-                        </button>
-                        <button onclick="modalManager.openDeleteModal('${entry.id}')" 
-                                class="btn btn-small btn-danger" title="Delete">
-                            🗑️
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+        tableBody.innerHTML = this.filteredEntries.map(entry => {
+            // Handle both array and single gene formats
+            let geneSymbolsDisplay = '';
+            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+                geneSymbolsDisplay = entry.gene_symbols.map(symbol => 
+                    `<span class="gene-tag">${this.escapeHtml(symbol)}</span>`
+                ).join(' ');
+            } else if (entry.gene_symbol) {
+                // Fallback for old format
+                geneSymbolsDisplay = `<span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span>`;
+            }
+
+            return `
+                <tr>
+                    <td><strong>${this.escapeHtml(entry.disease_name)}</strong></td>
+                    <td><code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">${this.escapeHtml(entry.disease_code)}</code></td>
+                    <td style="max-width: 300px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            ${geneSymbolsDisplay}
+                        </div>
+                    </td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(entry.description || '')}">
+                        ${this.escapeHtml(entry.description) || '<em style="color: var(--text-tertiary);">No description</em>'}
+                    </td>
+                    <td style="white-space: nowrap;">${this.formatDate(entry.created_at)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button onclick="modalManager.openGeneModal('${entry.id}')" 
+                                    class="btn btn-small btn-outline" title="Edit">
+                                ✏️
+                            </button>
+                            <button onclick="modalManager.openDeleteModal('${entry.id}')" 
+                                    class="btn btn-small btn-danger" title="Delete">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
         tableContainer.style.display = 'block';
         emptyState.style.display = 'none';

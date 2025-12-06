@@ -15,8 +15,7 @@ const diseaseService = require('./services/diseaseService');
 // For risk assessment
 const riskAssessmentService = require('./services/riskAssessmentService');
 
-// For gene entries (hospital gene management)
-const geneEntryService = require('./services/geneEntryService');
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -635,47 +634,23 @@ app.delete('/api/risk-assessments/:assessmentId', async (req, res) => {
 });
 
 // ===================================
-// GENE ENTRIES MANAGEMENT ENDPOINTS
+// DISEASE MANAGEMENT ENDPOINTS 
 // ===================================
 
-// Get all gene entries for a hospital
-app.get('/api/genes', async (req, res) => {
+// Add this at the top with other service imports:
+// const diseaseService = require('./services/diseaseService');
+
+// Get all diseases for a hospital
+app.get('/api/diseases', async (req, res) => {
   try {
     const hospitalId = req.query.hospital_id;
     
-    let entries;
+    let diseases;
     if (hospitalId) {
-      entries = await geneEntryService.getGeneEntriesByHospital(hospitalId);
+      diseases = await diseaseService.getDiseasesByHospital(hospitalId);
     } else {
-      entries = await geneEntryService.getAllGeneEntries();
+      diseases = await diseaseService.getAllDiseases();
     }
-
-    return res.json({
-      success: true,
-      count: entries.length,
-      entries
-    });
-  } catch (err) {
-    console.error('Get gene entries error:', err);
-    return res.status(500).json({
-      error: 'Failed to retrieve gene entries',
-      message: err.message
-    });
-  }
-});
-
-// Get unique diseases for a hospital
-app.get('/api/genes/diseases', async (req, res) => {
-  try {
-    const hospitalId = req.query.hospital_id;
-    
-    if (!hospitalId) {
-      return res.status(400).json({
-        error: 'Missing hospital_id parameter'
-      });
-    }
-
-    const diseases = await geneEntryService.getUniqueDiseases(hospitalId);
 
     return res.json({
       success: true,
@@ -691,8 +666,35 @@ app.get('/api/genes/diseases', async (req, res) => {
   }
 });
 
-// Search gene entries
-app.get('/api/genes/search', async (req, res) => {
+// Get unique diseases for a hospital
+app.get('/api/diseases/unique', async (req, res) => {
+  try {
+    const hospitalId = req.query.hospital_id;
+    
+    if (!hospitalId) {
+      return res.status(400).json({
+        error: 'Missing hospital_id parameter'
+      });
+    }
+
+    const diseases = await diseaseService.getUniqueDiseases(hospitalId);
+
+    return res.json({
+      success: true,
+      count: diseases.length,
+      diseases
+    });
+  } catch (err) {
+    console.error('Get unique diseases error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve unique diseases',
+      message: err.message
+    });
+  }
+});
+
+// Search diseases
+app.get('/api/diseases/search', async (req, res) => {
   try {
     const { hospital_id, q } = req.query;
     
@@ -703,155 +705,173 @@ app.get('/api/genes/search', async (req, res) => {
     }
 
     if (!q) {
-      // If no search term, return all entries
-      const entries = await geneEntryService.getGeneEntriesByHospital(hospital_id);
+      // If no search term, return all diseases
+      const diseases = await diseaseService.getDiseasesByHospital(hospital_id);
       return res.json({
         success: true,
-        count: entries.length,
-        entries
+        count: diseases.length,
+        diseases
       });
     }
 
-    const entries = await geneEntryService.searchGeneEntries(hospital_id, q);
+    const diseases = await diseaseService.searchDiseases(hospital_id, q);
 
     return res.json({
       success: true,
-      count: entries.length,
-      entries
+      count: diseases.length,
+      diseases
     });
   } catch (err) {
-    console.error('Search gene entries error:', err);
+    console.error('Search diseases error:', err);
     return res.status(500).json({
-      error: 'Failed to search gene entries',
+      error: 'Failed to search diseases',
       message: err.message
     });
   }
 });
 
-// Get a single gene entry by ID
-app.get('/api/genes/:id', async (req, res) => {
+// Get a single disease by ID
+app.get('/api/diseases/:id', async (req, res) => {
   try {
-    const entry = await geneEntryService.getGeneEntryById(req.params.id);
+    const disease = await diseaseService.getDiseaseById(req.params.id);
 
-    if (!entry) {
+    if (!disease) {
       return res.status(404).json({
-        error: 'Gene entry not found'
+        error: 'Disease not found'
       });
     }
 
     return res.json({
       success: true,
-      entry
+      disease
     });
   } catch (err) {
-    console.error('Get gene entry error:', err);
+    console.error('Get disease error:', err);
     return res.status(500).json({
-      error: 'Failed to retrieve gene entry',
+      error: 'Failed to retrieve disease',
       message: err.message
     });
   }
 });
 
-// Create a new gene entry
-app.post('/api/genes', async (req, res) => {
+// Create a new disease
+app.post('/api/diseases', async (req, res) => {
   try {
-    const { hospital_id, disease_name, disease_code, gene_symbol, description } = req.body;
+    const { hospital_id, disease_name, disease_code, gene_symbols, gene_symbol, description } = req.body;
+
+    // Handle both gene_symbols (array) and gene_symbol (string) for backwards compatibility
+    let geneSymbolsArray = [];
+    
+    if (gene_symbols) {
+      // New format: array of symbols
+      if (typeof gene_symbols === 'string') {
+        // If it's a string, split by comma
+        geneSymbolsArray = gene_symbols.split(',').map(s => s.trim()).filter(s => s);
+      } else if (Array.isArray(gene_symbols)) {
+        geneSymbolsArray = gene_symbols;
+      }
+    } else if (gene_symbol) {
+      // Old format: single symbol or comma-separated string
+      if (typeof gene_symbol === 'string') {
+        geneSymbolsArray = gene_symbol.split(',').map(s => s.trim()).filter(s => s);
+      }
+    }
 
     // Validate required fields
-    if (!hospital_id || !disease_name || !disease_code || !gene_symbol) {
+    if (!hospital_id || !disease_name || !disease_code || geneSymbolsArray.length === 0) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['hospital_id', 'disease_name', 'disease_code', 'gene_symbol']
+        required: ['hospital_id', 'disease_name', 'disease_code', 'gene_symbols (array or comma-separated string)']
       });
     }
 
-    // Check for duplicate
-    const isDuplicate = await geneEntryService.checkDuplicateEntry(
+    // Check if disease already exists
+    const isDuplicateDisease = await diseaseService.checkDuplicateDisease(
       hospital_id,
-      disease_code,
-      gene_symbol
+      disease_code
     );
 
-    if (isDuplicate) {
+    if (isDuplicateDisease) {
       return res.status(409).json({
-        error: 'Duplicate entry',
-        message: `Gene ${gene_symbol} already exists for disease code ${disease_code}`
+        error: 'Duplicate disease',
+        message: `Disease with code ${disease_code} already exists for this hospital`
       });
     }
 
-    const entry = await geneEntryService.createGeneEntry({
+    // Create the disease with multiple gene symbols
+    const disease = await diseaseService.createDisease({
       hospital_id,
       disease_name,
       disease_code,
-      gene_symbol,
+      gene_symbols: geneSymbolsArray,
       description
     });
 
     return res.status(201).json({
       success: true,
-      entry,
-      message: 'Gene entry created successfully'
+      disease,
+      message: 'Disease created successfully'
     });
   } catch (err) {
-    console.error('Create gene entry error:', err);
+    console.error('Create disease error:', err);
     return res.status(500).json({
-      error: 'Failed to create gene entry',
+      error: 'Failed to create disease',
       message: err.message
     });
   }
 });
 
-// Update a gene entry
-app.put('/api/genes/:id', async (req, res) => {
+// Update a disease
+app.put('/api/diseases/:id', async (req, res) => {
   try {
-    const entry = await geneEntryService.updateGeneEntry(req.params.id, req.body);
+    const disease = await diseaseService.updateDisease(req.params.id, req.body);
 
-    if (!entry) {
+    if (!disease) {
       return res.status(404).json({
-        error: 'Gene entry not found'
+        error: 'Disease not found'
       });
     }
 
     return res.json({
       success: true,
-      entry,
-      message: 'Gene entry updated successfully'
+      disease,
+      message: 'Disease updated successfully'
     });
   } catch (err) {
-    console.error('Update gene entry error:', err);
+    console.error('Update disease error:', err);
     return res.status(500).json({
-      error: 'Failed to update gene entry',
+      error: 'Failed to update disease',
       message: err.message
     });
   }
 });
 
-// Delete a gene entry
-app.delete('/api/genes/:id', async (req, res) => {
+// Delete a disease
+app.delete('/api/diseases/:id', async (req, res) => {
   try {
-    const deleted = await geneEntryService.deleteGeneEntry(req.params.id);
+    const deleted = await diseaseService.deleteDisease(req.params.id);
 
     if (!deleted) {
       return res.status(404).json({
-        error: 'Gene entry not found'
+        error: 'Disease not found'
       });
     }
 
     return res.json({
       success: true,
-      message: 'Gene entry deleted successfully'
+      message: 'Disease deleted successfully'
     });
   } catch (err) {
-    console.error('Delete gene entry error:', err);
+    console.error('Delete disease error:', err);
     return res.status(500).json({
-      error: 'Failed to delete gene entry',
+      error: 'Failed to delete disease',
       message: err.message
     });
   }
 });
 
-// Bulk upload gene entries from CSV
-app.post('/api/genes/upload', upload.single('file'), async (req, res) => {
+// Bulk upload diseases from CSV
+app.post('/api/diseases/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -916,7 +936,7 @@ app.post('/api/genes/upload', upload.single('file'), async (req, res) => {
     }
 
     // Bulk insert
-    const result = await geneEntryService.bulkInsertGeneEntries(entries, hospitalId);
+    const result = await diseaseService.bulkInsertDiseases(entries, hospitalId);
 
     return res.json({
       success: true,
@@ -936,7 +956,7 @@ app.post('/api/genes/upload', upload.single('file'), async (req, res) => {
 });
 
 // Generate hash preview (utility endpoint)
-app.post('/api/genes/hash-preview', (req, res) => {
+app.post('/api/diseases/hash-preview', (req, res) => {
   try {
     const { gene_symbol } = req.body;
 
@@ -946,7 +966,7 @@ app.post('/api/genes/hash-preview', (req, res) => {
       });
     }
 
-    const hash = geneEntryService.generateHash(gene_symbol);
+    const hash = diseaseService.generateHash(gene_symbol);
 
     return res.json({
       success: true,
@@ -961,6 +981,9 @@ app.post('/api/genes/hash-preview', (req, res) => {
     });
   }
 });
+
+
+
 
 // Helper function to parse CSV line (handles quoted values)
 function parseCSVLine(line) {

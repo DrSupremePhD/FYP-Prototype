@@ -155,7 +155,7 @@ class ModalManager {
 
         // Reset form
         document.getElementById('geneForm').reset();
-        document.getElementById('hashPreview').innerHTML = '<em style="color: var(--text-tertiary);">Enter a gene symbol to see its hash</em>';
+        document.getElementById('hashPreview').innerHTML = '<em style="color: var(--text-tertiary);">Enter gene symbols to see their hashes</em>';
 
         if (entryId) {
             // Edit mode
@@ -172,11 +172,21 @@ class ModalManager {
             // Populate form
             document.getElementById('diseaseNameInput').value = entry.disease_name;
             document.getElementById('diseaseCodeInput').value = entry.disease_code;
-            document.getElementById('geneSymbolInput').value = entry.gene_symbol;
+            
+            // Handle gene symbols - convert array to comma-separated string
+            let geneSymbolsStr = '';
+            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+                geneSymbolsStr = entry.gene_symbols.join(', ');
+            } else if (entry.gene_symbol) {
+                // Fallback for old format
+                geneSymbolsStr = entry.gene_symbol;
+            }
+            document.getElementById('geneSymbolInput').value = geneSymbolsStr;
+            
             document.getElementById('descriptionInput').value = entry.description || '';
 
             // Update hash preview
-            this.updateHashPreview(entry.gene_symbol);
+            this.updateHashPreview(geneSymbolsStr);
         } else {
             // Add mode
             title.textContent = 'Add Gene Entry';
@@ -229,10 +239,19 @@ class ModalManager {
             } else {
                 await this.geneManager.addEntry(data);
             }
-            this.closeGeneModal();
+            
+            // Success - close the modal
+            const modal = document.getElementById('geneModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            
         } catch (error) {
             console.error('Form submit error:', error);
+            // Keep modal open on error so user can fix the issue
+            this.geneManager.showNotification(error.message || 'Failed to save entry', 'error');
         } finally {
+            // Always re-enable the button
             saveBtn.disabled = false;
             saveText.style.display = 'inline';
             saveSpinner.style.display = 'none';
@@ -240,30 +259,58 @@ class ModalManager {
     }
 
     /**
-     * Update hash preview
-     * @param {string} geneSymbol - Gene symbol to hash
+     * Update hash preview for multiple gene symbols
+     * @param {string} geneSymbolsStr - Comma-separated gene symbols
      */
-    async updateHashPreview(geneSymbol) {
+    async updateHashPreview(geneSymbolsStr) {
         const preview = document.getElementById('hashPreview');
         if (!preview) return;
 
-        if (!geneSymbol || geneSymbol.trim() === '') {
-            preview.innerHTML = '<em style="color: var(--text-tertiary);">Enter a gene symbol to see its hash</em>';
+        if (!geneSymbolsStr || geneSymbolsStr.trim() === '') {
+            preview.innerHTML = '<em style="color: var(--text-tertiary);">Enter gene symbols to see their hashes</em>';
             return;
         }
 
         try {
-            const hash = await BackendAPI.generateHashPreview(geneSymbol);
+            // Split and clean gene symbols
+            const symbols = geneSymbolsStr
+                .split(',')
+                .map(s => s.trim().toUpperCase())
+                .filter(s => s);
+
+            if (symbols.length === 0) {
+                preview.innerHTML = '<em style="color: var(--text-tertiary);">Enter gene symbols to see their hashes</em>';
+                return;
+            }
+
+            // Generate hashes for all symbols
+            const hashPromises = symbols.map(async symbol => {
+                const hash = await BackendAPI.generateHashPreview(symbol);
+                return { symbol, hash };
+            });
+
+            const results = await Promise.all(hashPromises);
+
+            // Display all hashes
             preview.innerHTML = `
-                <div style="margin-bottom: 4px; color: var(--text-primary); font-weight: 500;">
-                    ${geneSymbol.toUpperCase()}
+                <div style="max-height: 150px; overflow-y: auto;">
+                    ${results.map(({ symbol, hash }) => `
+                        <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light);">
+                            <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 4px;">
+                                ${symbol}
+                            </div>
+                            <div style="word-break: break-all; font-size: 11px; color: var(--text-secondary);">
+                                ${hash}
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
-                <div style="word-break: break-all; font-size: 11px;">
-                    ${hash}
+                <div style="margin-top: 8px; font-size: 11px; color: var(--text-tertiary);">
+                    ${symbols.length} gene symbol${symbols.length > 1 ? 's' : ''} will be added
                 </div>
             `;
         } catch (error) {
-            preview.innerHTML = '<em style="color: var(--error-color);">Error generating hash</em>';
+            preview.innerHTML = '<em style="color: var(--error-color);">Error generating hashes</em>';
         }
     }
 

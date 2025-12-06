@@ -1,65 +1,404 @@
 // diseaseService.js
+// Service for managing diseases and their associated genes in the database
+
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+const { run, get, all } = require('../db/db');
 
 const diseaseService = {
-  // Disease categories with genes
-  // NOTE: Genes are NEVER sent to frontend - only used for PSI server-side
-  disease_categories: [
-    // Use static id for now because backend database for disease categories not done yet
-    {
-      //id: uuidv4(),
-      id: "disease-001",
-      name: "Breast Cancer",
-      description: "Risk assessment based on hereditary and molecular markers associated with breast cancer.",
-      genes: ["BRCA1", "BRCA2", "TP53", "ERBB2"],
-      hospitalId: "hospital_test_1"
-    },
-    {
-      //id: uuidv4(),
-      id: "disease-002",
-      name: "Breast Cancer",
-      description: "Comprehensive breast cancer risk panel with extended markers.",
-      genes: ["BRCA1", "BRCA2", "PALB2", "CHEK2", "ATM"],
-      hospitalId: "hospital_metro_2"
-    },
-    {
-      //id: uuidv4(),
-      id: "disease-003",
-      name: "Alzheimer's Disease",
-      description: "Risk evaluation based on genetic indicators linked to neurodegenerative conditions.",
-      genes: ["APOE", "ABCA7", "CLU", "PICALM"],
-      hospitalId: "hospital_test_1"
-    },
-    {
-      //id: uuidv4(),
-      id: "disease-004",
-      name: "Type 2 Diabetes",
-      description: "Risk assessment based on inherited factors influencing insulin regulation and metabolism.",
-      genes: ["TCF7L2", "FTO", "SLC30A8", "KCNJ11"],
-      hospitalId: "hospital_test_1"
-    },
-    {
-      //id: uuidv4(),
-      id: "disease-005",
-      name: "Cardiovascular Disease",
-      description: "Risk evaluation using genetic markers associated with lipid processing and vascular health.",
-      genes: ["LDLR", "PCSK9", "CETP", "IL6"],
-      hospitalId: "hospital_test_1"
-    }
-  ],
-
-  // Get all disease categories 
-  getDiseaseCategories() {
-    return this.disease_categories;
+  /**
+   * Generate SHA-256 hash for a gene symbol
+   * @param {string} geneSymbol - The gene symbol to hash
+   * @returns {string} - Hex-encoded SHA-256 hash
+   */
+  generateHash(geneSymbol) {
+    return crypto.createHash('sha256').update(geneSymbol.toUpperCase()).digest('hex');
   },
 
-  // Get disease genes by ID 
-  getDiseaseGenes(diseaseId) {
-    const disease = this.disease_categories.find(d => d.id === diseaseId);
-    if (!disease) {
-      return null; // or return []
+  /**
+   * Create a new disease and its associated gene symbols
+   * @param {Object} data - Disease data including gene_symbols array
+   * @returns {Promise<Object>} - Created disease
+   */
+  async createDisease(data) {
+    const id = uuidv4();
+    const now = new Date().toISOString();
+
+    // 1. Insert into diseases table (Disease metadata)
+    const diseaseSql = `
+      INSERT INTO diseases (
+        id, hospital_id, disease_name, disease_code, 
+        description, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await run(diseaseSql, [
+      id,
+      data.hospital_id,
+      data.disease_name,
+      data.disease_code,
+      data.description || '',
+      now,
+      now
+    ]);
+    
+    // 2. Insert into disease_genes (Gene symbols)
+    if (data.gene_symbols && Array.isArray(data.gene_symbols)) {
+        for (const symbol of data.gene_symbols) {
+            if (symbol && typeof symbol === 'string') {
+                await this.insertGeneSymbol(id, symbol);
+            }
+        }
     }
-    return disease.genes;
+
+    return this.getDiseaseById(id);
+  },
+
+  /**
+   * Internal helper to insert a single gene symbol and its hash.
+   * @param {string} diseaseId - ID of the parent disease
+   * @param {string} geneSymbol - The gene symbol string (e.g., 'BRCA1')
+   */
+  async insertGeneSymbol(diseaseId, geneSymbol) {
+    const geneSymbolUpper = geneSymbol.toUpperCase();
+    const hashValue = this.generateHash(geneSymbolUpper);
+    const id = uuidv4();
+    const now = new Date().toISOString();
+
+    const sql = `
+      INSERT INTO disease_genes (
+        id, disease_id, gene_symbol, hash_value, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    await run(sql, [
+      id,
+      diseaseId,
+      geneSymbolUpper,
+      hashValue,
+      now,
+      now
+    ]);
+  },
+
+  /**
+   * Get disease by ID, including all associated gene symbols
+   * @param {string} id - Disease ID
+   * @returns {Promise<Object|null>} - Disease or null
+   */
+  async getDiseaseById(id) {
+    // 1. Get the main disease
+    const diseaseSql = 'SELECT * FROM diseases WHERE id = ?';
+    const disease = await get(diseaseSql, [id]);
+    
+    if (!disease) return null;
+    
+    // 2. Get all associated gene symbols
+    const genesSql = `
+      SELECT gene_symbol, hash_value, id as gene_id 
+      FROM disease_genes 
+      WHERE disease_id = ?
+      ORDER BY gene_symbol ASC
+    `;
+    const geneDetails = await all(genesSql, [id]);
+
+    // 3. Combine results
+    disease.gene_symbols = geneDetails.map(g => g.gene_symbol);
+    disease.gene_details = geneDetails; // Keep details for hash/ID access
+    
+    return disease;
+  },
+
+  /**
+   * Internal helper to fetch all gene symbols for an array of diseases
+   */
+  async processDiseases(diseases) {
+      if (diseases.length === 0) return [];
+      
+      const diseaseIds = diseases.map(d => d.id);
+      
+      // Get all genes for all fetched disease IDs in one go
+      const genesSql = `
+          SELECT disease_id, gene_symbol 
+          FROM disease_genes 
+          WHERE disease_id IN (${diseaseIds.map(() => '?').join(', ')})
+          ORDER BY disease_id, gene_symbol ASC
+      `;
+      const allGenes = await all(genesSql, diseaseIds);
+      
+      // Group genes by disease ID
+      const genesMap = allGenes.reduce((acc, gene) => {
+          if (!acc[gene.disease_id]) {
+              acc[gene.disease_id] = [];
+          }
+          acc[gene.disease_id].push(gene.gene_symbol);
+          return acc;
+      }, {});
+      
+      // Attach gene symbols to their respective diseases
+      return diseases.map(disease => ({
+          ...disease,
+          gene_symbols: genesMap[disease.id] || []
+      }));
+  },
+
+  /**
+   * Get all diseases for a hospital
+   * @param {string} hospitalId - Hospital ID
+   * @returns {Promise<Array>} - Array of diseases
+   */
+  async getDiseasesByHospital(hospitalId) {
+    const sql = `
+      SELECT * FROM diseases 
+      WHERE hospital_id = ? 
+      ORDER BY created_at DESC
+    `;
+    const diseases = await all(sql, [hospitalId]);
+    return this.processDiseases(diseases);
+  },
+
+  /**
+   * Get all diseases (admin view)
+   * @returns {Promise<Array>} - Array of all diseases
+   */
+  async getAllDiseases() {
+    const sql = 'SELECT * FROM diseases ORDER BY created_at DESC';
+    const diseases = await all(sql);
+    return this.processDiseases(diseases);
+  },
+
+  /**
+   * Get diseases by disease code
+   * @param {string} diseaseCode - Disease code
+   * @param {string} hospitalId - Hospital ID (optional)
+   * @returns {Promise<Array>} - Array of diseases
+   */
+  async getDiseasesByCode(diseaseCode, hospitalId = null) {
+    let sql = 'SELECT * FROM diseases WHERE disease_code = ?';
+    const params = [diseaseCode];
+    
+    if (hospitalId) {
+      sql += ' AND hospital_id = ?';
+      params.push(hospitalId);
+    }
+    
+    sql += ' ORDER BY disease_name ASC';
+    const diseases = await all(sql, params);
+    
+    return this.processDiseases(diseases);
+  },
+
+  /**
+   * Update a disease (metadata only)
+   * @param {string} id - Disease ID
+   * @param {Object} data - Updated data
+   * @returns {Promise<Object|null>} - Updated disease or null
+   */
+  async updateDisease(id, data) {
+    const existing = await this.getDiseaseById(id);
+    if (!existing) return null;
+
+    const updates = [];
+    const params = [];
+    const now = new Date().toISOString();
+
+    if (data.disease_name !== undefined) {
+      updates.push('disease_name = ?');
+      params.push(data.disease_name);
+    }
+
+    if (data.disease_code !== undefined) {
+      updates.push('disease_code = ?');
+      params.push(data.disease_code);
+    }
+
+    if (data.description !== undefined) {
+      updates.push('description = ?');
+      params.push(data.description);
+    }
+
+    if (updates.length > 0) {
+        updates.push('updated_at = ?');
+        params.push(now);
+        params.push(id);
+
+        const sql = `UPDATE diseases SET ${updates.join(', ')} WHERE id = ?`;
+        await run(sql, params);
+    }
+
+    // If gene_symbols were provided, update them
+    // This requires deleting existing and re-inserting
+    if (data.gene_symbols && Array.isArray(data.gene_symbols)) {
+        // Delete existing genes
+        await run('DELETE FROM disease_genes WHERE disease_id = ?', [id]);
+        
+        // Insert new genes
+        for (const symbol of data.gene_symbols) {
+            if (symbol && typeof symbol === 'string') {
+                await this.insertGeneSymbol(id, symbol);
+            }
+        }
+    }
+
+    return this.getDiseaseById(id);
+  },
+
+  /**
+   * Delete a disease
+   * @param {string} id - Disease ID
+   * @returns {Promise<boolean>} - True if deleted
+   */
+  async deleteDisease(id) {
+    const existing = await this.getDiseaseById(id);
+    if (!existing) return false;
+
+    const sql = 'DELETE FROM diseases WHERE id = ?';
+    await run(sql, [id]);
+    return true;
+  },
+
+  /**
+   * Bulk insert diseases from CSV data
+   * @param {Array} entries - Array of disease objects
+   * @param {string} hospitalId - Hospital ID
+   * @returns {Promise<Object>} - Summary of inserted/skipped entries
+   */
+  async bulkInsertDiseases(entries, hospitalId) {
+    const results = {
+      inserted: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    for (const entry of entries) {
+      try {
+        if (!entry.disease_name || !entry.disease_code || !entry.gene_symbol) {
+          results.skipped++;
+          results.errors.push({
+            entry: entry,
+            reason: 'Missing required fields (disease_name, disease_code, gene_symbol)'
+          });
+          continue;
+        }
+
+        // 1. Check if the disease already exists (by hospitalId and disease_code)
+        const existingDisease = await get('SELECT id, description FROM diseases WHERE hospital_id = ? AND disease_code = ?', 
+                                        [hospitalId, entry.disease_code]);
+        
+        let diseaseId;
+        
+        if (existingDisease) {
+            // Disease exists, use its ID
+            diseaseId = existingDisease.id;
+        } else {
+            // 2. Disease does not exist, create it
+            const id = uuidv4();
+            const now = new Date().toISOString();
+            const diseaseSql = `
+              INSERT INTO diseases (
+                id, hospital_id, disease_name, disease_code, description, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            await run(diseaseSql, [
+              id,
+              hospitalId,
+              entry.disease_name,
+              entry.disease_code,
+              entry.description || '',
+              now,
+              now
+            ]);
+            diseaseId = id;
+        }
+
+        // 3. Check if the specific gene symbol already exists for this disease
+        const isDuplicateGene = await get('SELECT id FROM disease_genes WHERE disease_id = ? AND gene_symbol = ?', 
+                                          [diseaseId, entry.gene_symbol.toUpperCase()]);
+
+        if (isDuplicateGene) {
+            results.skipped++;
+            results.errors.push({
+                entry: entry,
+                reason: `Duplicate gene symbol: ${entry.gene_symbol} for disease code ${entry.disease_code}`
+            });
+            continue;
+        }
+
+        // 4. Insert the gene symbol (in disease_genes table)
+        await this.insertGeneSymbol(diseaseId, entry.gene_symbol);
+
+        results.inserted++;
+      } catch (err) {
+        results.skipped++;
+        results.errors.push({
+          entry: entry,
+          reason: err.message
+        });
+      }
+    }
+
+    return results;
+  },
+
+  /**
+   * Check if a duplicate disease exists (based on disease_code and hospitalId)
+   * @param {string} hospitalId - Hospital ID
+   * @param {string} diseaseCode - Disease code
+   * @returns {Promise<boolean>} - True if duplicate disease exists
+   */
+  async checkDuplicateDisease(hospitalId, diseaseCode) {
+    const sql = `
+      SELECT id FROM diseases 
+      WHERE hospital_id = ? AND disease_code = ?
+    `;
+    const result = await get(sql, [hospitalId, diseaseCode]);
+    return !!result;
+  },
+
+  /**
+   * Get unique diseases for a hospital
+   * @param {string} hospitalId - Hospital ID
+   * @returns {Promise<Array>} - Array of unique disease names/codes
+   */
+  async getUniqueDiseases(hospitalId) {
+    const sql = `
+      SELECT DISTINCT disease_name, disease_code, 
+             COUNT(*) as gene_count,
+             MIN(description) as description,
+             MIN(created_at) as created_at
+      FROM diseases 
+      WHERE hospital_id = ?
+      GROUP BY disease_name, disease_code
+      ORDER BY disease_name ASC
+    `;
+    return all(sql, [hospitalId]);
+  },
+
+  /**
+   * Search diseases
+   * @param {string} hospitalId - Hospital ID
+   * @param {string} searchTerm - Search term
+   * @returns {Promise<Array>} - Matching diseases
+   */
+  async searchDiseases(hospitalId, searchTerm) {
+    const term = `%${searchTerm}%`;
+    
+    // First search in diseases table
+    const diseaseSql = `
+      SELECT DISTINCT d.* 
+      FROM diseases d
+      LEFT JOIN disease_genes dg ON d.id = dg.disease_id
+      WHERE d.hospital_id = ? 
+        AND (d.disease_name LIKE ? 
+             OR d.disease_code LIKE ? 
+             OR d.description LIKE ?
+             OR dg.gene_symbol LIKE ?)
+      ORDER BY d.disease_name ASC
+    `;
+    
+    const diseases = await all(diseaseSql, [hospitalId, term, term, term, term]);
+    return this.processDiseases(diseases);
   }
 };
 
