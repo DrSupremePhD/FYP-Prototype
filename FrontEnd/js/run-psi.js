@@ -149,8 +149,9 @@ async function runPSI(selectedDiseaseID) {
     console.log("PSI Matches found:", matches);
     console.log("Match count:", matches.length);
 
-    // 7. Compute risk percentage
-    const riskPercentage = computePSIRiskPercentage(matches, doubleBlindedDisease);
+
+    // Compute risk percentage using backend (with disease constant)
+    const riskPercentage = await computePSIRiskPercentage(selectedDiseaseID, matches, doubleBlindedDisease);
     console.log("Risk percentage:", riskPercentage.toFixed(2) + "%");
 
     return {
@@ -161,18 +162,54 @@ async function runPSI(selectedDiseaseID) {
 }
 
 /**
- * Compute PSI risk percentage
- * Percentage = (matched genes / total disease genes) * 100
+ * Compute PSI risk percentage using backend
+ * Calls backend to calculate: |matchedCount / totalDiseaseGenes| * constant
+ * @param {string} diseaseId - Disease ID to get constant from
  * @param {Array<string>} matchedList - List of matched gene symbols
  * @param {Array<string>} doubleBlindedDiseaseList - Double-blinded disease genes
- * @returns {number} Risk percentage
+ * @returns {Promise<number>} Risk percentage
  */
-function computePSIRiskPercentage(matchedList, doubleBlindedDiseaseList) {
+async function computePSIRiskPercentage(diseaseId, matchedList, doubleBlindedDiseaseList) {
+    // If no disease genes, return 0
     if (doubleBlindedDiseaseList.length === 0) {
         return 0;
     }
-    const percentage = (matchedList.length / doubleBlindedDiseaseList.length) * 100;
-    return percentage;
+
+    try {
+        console.log("Calculating risk percentage via backend...");
+        console.log("  - Disease ID:", diseaseId);
+        console.log("  - Matched count:", matchedList.length);
+        console.log("  - Total disease genes:", doubleBlindedDiseaseList.length);
+
+        const response = await fetch("http://localhost:3001/api/psi/calculate-risk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                diseaseId: diseaseId,
+                matchedCount: matchedList.length,
+                totalDiseaseGenes: doubleBlindedDiseaseList.length
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error("Risk calculation failed:", error);
+            // Fallback to local calculation without constant
+            console.log("Falling back to local calculation...");
+            return (matchedList.length / doubleBlindedDiseaseList.length) * 100;
+        }
+
+        const result = await response.json();
+        console.log("Backend risk calculation result:", result);
+
+        return result.riskPercentage;
+
+    } catch (error) {
+        console.error("Error calling risk calculation endpoint:", error);
+        // Fallback to local calculation without constant
+        console.log("Falling back to local calculation...");
+        return (matchedList.length / doubleBlindedDiseaseList.length) * 100;
+    }
 }
 
 // Make runPSI globally accessible

@@ -1,3 +1,6 @@
+-- ===================================
+-- Users Table
+-- ===================================
 -- users table: stores user registration and login information
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -38,6 +41,11 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE INDEX IF NOT EXISTS idx_documents_session ON documents(session_id);
 
+
+-- ===================================
+-- SEED DISEASES FOR TEST USERS
+-- ===================================
+
 -- Insert default system admin user (if not exists)
 INSERT OR IGNORE INTO users (
     id, 
@@ -61,7 +69,6 @@ INSERT OR IGNORE INTO users (
     datetime('now')
 );
 
--- TEMPORARY, delete later
 -- Insert test patient user
 INSERT OR IGNORE INTO users (
     id, 
@@ -139,6 +146,9 @@ INSERT OR IGNORE INTO users (
     datetime('now')
 );
 
+-- ===================================
+-- Risk Assessments Table
+-- ===================================
 -- risk_assessments table: stores patient risk assessment results
 CREATE TABLE IF NOT EXISTS risk_assessments (
   id TEXT PRIMARY KEY,
@@ -155,6 +165,9 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
 CREATE INDEX IF NOT EXISTS idx_risk_assessments_user ON risk_assessments(user_id);
 CREATE INDEX IF NOT EXISTS idx_risk_assessments_created ON risk_assessments(created_at DESC);
 
+-- ===================================
+-- Diseases Table
+-- ===================================
 -- diseases table: stores disease records for hospital PSI (renamed from gene_entries)
 CREATE TABLE IF NOT EXISTS diseases (
   id TEXT PRIMARY KEY,
@@ -162,6 +175,7 @@ CREATE TABLE IF NOT EXISTS diseases (
   disease_name TEXT NOT NULL,
   disease_code TEXT NOT NULL,
   description TEXT,
+  constant REAL NOT NULL DEFAULT 50.0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (hospital_id) REFERENCES users(id) ON DELETE CASCADE
@@ -189,3 +203,309 @@ CREATE TABLE IF NOT EXISTS disease_genes (
 CREATE INDEX IF NOT EXISTS idx_disease_genes_disease_id ON disease_genes(disease_id);
 CREATE INDEX IF NOT EXISTS idx_disease_genes_symbol ON disease_genes(gene_symbol);
 CREATE INDEX IF NOT EXISTS idx_disease_genes_hash ON disease_genes(hash_value);
+
+-- ===================================
+-- SEED DISEASES FOR TEST HOSPITAL
+-- ===================================
+
+-- Disease 1: Breast Cancer
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_breast_cancer_1',
+    'hospital_test_1',
+    'Breast Cancer',
+    'BRCA-2024',
+    'Hereditary breast cancer risk assessment based on BRCA1/BRCA2 mutations',
+    75.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 1 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_brca1_1', 'disease_breast_cancer_1', 'BRCA1', 
+        'a88b44a67c8d4b8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_brca2_1', 'disease_breast_cancer_1', 'BRCA2', 
+        'b99c55b78d9e5c9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_tp53_1', 'disease_breast_cancer_1', 'TP53', 
+        'c00d66c89e0f6d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_palb2_1', 'disease_breast_cancer_1', 'PALB2', 
+        'd11e77d90f1a7e1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b', datetime('now'), datetime('now'));
+
+
+-- Disease 2: Type 2 Diabetes
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_diabetes_t2_1',
+    'hospital_test_1',
+    'Type 2 Diabetes',
+    'T2D-2024',
+    'Genetic risk factors for Type 2 Diabetes Mellitus',
+    60.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 2 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_tcf7l2_1', 'disease_diabetes_t2_1', 'TCF7L2', 
+        'e22f88e01a2b8f2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_fto_1', 'disease_diabetes_t2_1', 'FTO', 
+        'f33a99f12b3c9a3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_slc30a8_1', 'disease_diabetes_t2_1', 'SLC30A8', 
+        'a44b00a23c4d0b4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_kcnj11_1', 'disease_diabetes_t2_1', 'KCNJ11', 
+        'b55c11b34d5e1c5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_pparg_1', 'disease_diabetes_t2_1', 'PPARG', 
+        'c66d22c45e6f2d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a', datetime('now'), datetime('now'));
+
+
+-- Disease 3: Alzheimer's Disease
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_alzheimers_1',
+    'hospital_test_1',
+    'Alzheimer''s Disease',
+    'ALZ-2024',
+    'Genetic predisposition markers for late-onset Alzheimer''s disease',
+    80.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 3 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_apoe_1', 'disease_alzheimers_1', 'APOE', 
+        'd77e33d56f7a3e7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_psen1_1', 'disease_alzheimers_1', 'PSEN1', 
+        'e88f44e67a8b4f8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_psen2_1', 'disease_alzheimers_1', 'PSEN2', 
+        'f99a55f78b9c5a9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_app_1', 'disease_alzheimers_1', 'APP', 
+        'a00b66a89c0d6b0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e', datetime('now'), datetime('now'));
+
+
+-- Disease 4: Cardiovascular Disease
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_cardiovascular_1',
+    'hospital_test_1',
+    'Cardiovascular Disease',
+    'CVD-2024',
+    'Genetic markers associated with heart disease and stroke risk',
+    65.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 4 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_apoe_2', 'disease_cardiovascular_1', 'APOE', 
+        'd77e33d56f7a3e7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_mthfr_1', 'disease_cardiovascular_1', 'MTHFR', 
+        'b11c77b90d1e7c1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_ace_1', 'disease_cardiovascular_1', 'ACE', 
+        'c22d88c01e2f8d2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_ldlr_1', 'disease_cardiovascular_1', 'LDLR', 
+        'd33e99d12f3a9e3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_pcsk9_1', 'disease_cardiovascular_1', 'PCSK9', 
+        'e44f00e23a4b0f4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c', datetime('now'), datetime('now'));
+
+
+-- Disease 5: Lung Cancer
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_lung_cancer_1',
+    'hospital_test_1',
+    'Lung Cancer',
+    'LUNG-2024',
+    'Genetic susceptibility markers for lung cancer development',
+    70.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 5 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_egfr_1', 'disease_lung_cancer_1', 'EGFR', 
+        'f55a11f34b5c1a5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_kras_1', 'disease_lung_cancer_1', 'KRAS', 
+        'a66b22a45c6d2b6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_alk_1', 'disease_lung_cancer_1', 'ALK', 
+        'b77c33b56d7e3c7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_tp53_2', 'disease_lung_cancer_1', 'TP53', 
+        'c00d66c89e0f6d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_ros1_1', 'disease_lung_cancer_1', 'ROS1', 
+        'c88d44c67e8f4d8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a', datetime('now'), datetime('now'));
+
+
+-- Disease 6: Inflammatory Conditions
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_inflammatory_1',
+    'hospital_test_1',
+    'Chronic Inflammatory Disease',
+    'INFLAM-2024',
+    'Genetic markers for chronic inflammation and autoimmune conditions',
+    55.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 6 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_tnf_1', 'disease_inflammatory_1', 'TNF', 
+        'd99e55d78f9a5e9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_il6_1', 'disease_inflammatory_1', 'IL6', 
+        'e00f66e89a0b6f0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_il1b_1', 'disease_inflammatory_1', 'IL1B', 
+        'f11a77f90b1c7a1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_crp_1', 'disease_inflammatory_1', 'CRP', 
+        'a22b88a01c2d8b2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e', datetime('now'), datetime('now'));
+
+
+-- Disease 7: Obesity Risk
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_obesity_1',
+    'hospital_test_1',
+    'Obesity Susceptibility',
+    'OBS-2024',
+    'Genetic factors contributing to obesity and metabolic disorders',
+    50.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 7 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_fto_2', 'disease_obesity_1', 'FTO', 
+        'f33a99f12b3c9a3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_mc4r_1', 'disease_obesity_1', 'MC4R', 
+        'b33c99b12d3e9c3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_lepr_1', 'disease_obesity_1', 'LEPR', 
+        'c44d00c23e4f0d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_pomc_1', 'disease_obesity_1', 'POMC', 
+        'd55e11d34f5a1e5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_adrb3_1', 'disease_obesity_1', 'ADRB3', 
+        'e66f22e45a6b2f6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c', datetime('now'), datetime('now'));
+
+
+-- Disease 8: Colorectal Cancer
+INSERT OR IGNORE INTO diseases (
+    id,
+    hospital_id,
+    disease_name,
+    disease_code,
+    description,
+    constant,
+    created_at,
+    updated_at
+) VALUES (
+    'disease_colorectal_1',
+    'hospital_test_1',
+    'Colorectal Cancer',
+    'CRC-2024',
+    'Hereditary colorectal cancer syndrome genetic markers',
+    72.0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Disease 8 Genes
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_apc_1', 'disease_colorectal_1', 'APC', 
+        'f77a33f56b7c3a7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_mlh1_1', 'disease_colorectal_1', 'MLH1', 
+        'a88b44a67c8d4b8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_msh2_1', 'disease_colorectal_1', 'MSH2', 
+        'b99c55b78d9e5c9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_tp53_3', 'disease_colorectal_1', 'TP53', 
+        'c00d66c89e0f6d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_smad4_1', 'disease_colorectal_1', 'SMAD4', 
+        'c99d55c78e9f5d9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a', datetime('now'), datetime('now'));

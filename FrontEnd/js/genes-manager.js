@@ -93,6 +93,15 @@ class GeneManager {
         if (genesEl) genesEl.textContent = uniqueGenes.size;
     }
 
+    /**
+     * Validate constant value
+     * @param {number|string} constant - The constant to validate
+     * @returns {boolean} - True if valid
+     */
+    validateConstant(constant) {
+        const num = parseFloat(constant);
+        return !isNaN(num) && num > 0 && num <= 100;
+    }
 
     /**
      * Add a new gene entry
@@ -114,6 +123,11 @@ class GeneManager {
             if (geneSymbolsArray.length === 0) {
                 throw new Error('Please provide at least one gene symbol');
             }
+
+            // Validate constant
+            if (!this.validateConstant(data.constant)) {
+                throw new Error('Constant must be a number greater than 0 and less than or equal to 100');
+            }
             
             if (this.useBackend) {
                 // Use backend API
@@ -122,7 +136,8 @@ class GeneManager {
                     disease_name: data.disease_name,
                     disease_code: data.disease_code,
                     gene_symbols: geneSymbolsArray,
-                    description: data.description || ''
+                    description: data.description || '',
+                    constant: parseFloat(data.constant)
                 };
 
                 console.log('Sending to backend:', entryData);
@@ -175,6 +190,7 @@ class GeneManager {
                     disease_code: data.disease_code,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
+                    constant: parseFloat(data.constant),
                     created_at: now,
                     updated_at: now
                 };
@@ -211,7 +227,7 @@ class GeneManager {
         }
     }
 
-    /**
+/**
      * Update an existing gene entry
      * @param {string} id - Entry ID
      * @param {Object} data - Updated data
@@ -219,29 +235,43 @@ class GeneManager {
      */
     async updateEntry(id, data) {
         try {
-            const geneSymbol = data.gene_symbol.toUpperCase();
+            // Parse gene symbols
+            let geneSymbolsArray = [];
+            if (data.gene_symbol) {
+                geneSymbolsArray = data.gene_symbol
+                    .split(',')
+                    .map(s => s.trim().toUpperCase())
+                    .filter(s => s);
+            }
+
+            // Validate constant
+            if (!this.validateConstant(data.constant)) {
+                throw new Error('Constant must be a number greater than 0 and less than or equal to 100');
+            }
             
             if (this.useBackend) {
                 // Use backend API
                 const updateData = {
                     disease_name: data.disease_name,
                     disease_code: data.disease_code,
-                    gene_symbol: geneSymbol,
-                    description: data.description || ''
+                    gene_symbols: geneSymbolsArray,
+                    description: data.description || '',
+                    constant: parseFloat(data.constant)
                 };
 
                 const result = await BackendAPI.updateDisease(id, updateData);
                 
-                if (result.success && result.entry) {
+                if (result.success && (result.entry || result.disease)) {
+                    const entry = result.entry || result.disease;
                     const index = this.entries.findIndex(e => e.id === id);
                     if (index !== -1) {
-                        this.entries[index] = result.entry;
+                        this.entries[index] = entry;
                     }
                     this.filteredEntries = [...this.entries];
                     this.renderTable();
                     this.updateStats();
                     this.showNotification('Gene entry updated successfully', 'success');
-                    return result.entry;
+                    return entry;
                 }
                 
                 throw new Error('Failed to update entry');
@@ -252,15 +282,13 @@ class GeneManager {
                     throw new Error('Entry not found');
                 }
                 
-                const hashValue = await BackendAPI.generateHashPreview(geneSymbol);
-                
                 const updatedEntry = {
                     ...this.entries[index],
                     disease_name: data.disease_name,
                     disease_code: data.disease_code,
-                    gene_symbol: geneSymbol,
+                    gene_symbols: geneSymbolsArray,
                     description: data.description || '',
-                    hash_value: hashValue,
+                    constant: parseFloat(data.constant),
                     updated_at: new Date().toISOString()
                 };
                 
@@ -317,7 +345,7 @@ class GeneManager {
         }
     }
 
-    /**
+/**
      * Upload CSV file
      * @param {File} file - CSV file
      * @returns {Promise<Object>} Upload result
@@ -345,7 +373,7 @@ class GeneManager {
                 
                 // Parse header
                 const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const requiredCols = ['disease_name', 'disease_code', 'gene_symbol'];
+                const requiredCols = ['disease_name', 'disease_code', 'gene_symbol', 'constant'];
                 const missing = requiredCols.filter(col => !header.includes(col));
                 
                 if (missing.length > 0) {
@@ -371,12 +399,19 @@ class GeneManager {
                         errors.push({ reason: `Row ${i}: Missing required fields` });
                         continue;
                     }
+
+                    // Validate constant
+                    if (!this.validateConstant(entry.constant)) {
+                        skipped++;
+                        errors.push({ reason: `Row ${i}: Invalid constant value (must be > 0 and <= 100)` });
+                        continue;
+                    }
                     
                     // Check for duplicates
                     const geneSymbol = entry.gene_symbol.toUpperCase();
                     const exists = this.entries.some(e => 
                         e.disease_code === entry.disease_code && 
-                        e.gene_symbol === geneSymbol
+                        e.gene_symbols && e.gene_symbols.includes(geneSymbol)
                     );
                     
                     if (exists) {
@@ -386,15 +421,14 @@ class GeneManager {
                     }
                     
                     // Create entry
-                    const hashValue = await BackendAPI.generateHashPreview(geneSymbol);
                     const newEntry = {
                         id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                         hospital_id: this.user.id,
                         disease_name: entry.disease_name,
                         disease_code: entry.disease_code,
-                        gene_symbol: geneSymbol,
+                        gene_symbols: [geneSymbol],
                         description: entry.description || '',
-                        hash_value: hashValue,
+                        constant: parseFloat(entry.constant),
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     };
@@ -470,8 +504,12 @@ class GeneManager {
                 } else if (entry.gene_symbol) {
                     matchGene = entry.gene_symbol.toLowerCase().includes(term);
                 }
+
+                // Check constant
+                const matchConstant = entry.constant && 
+                                     entry.constant.toString().includes(term);
                 
-                return matchDisease || matchGene || matchDescription;
+                return matchDisease || matchGene || matchDescription || matchConstant;
             });
         }
         
@@ -515,6 +553,11 @@ class GeneManager {
                 geneSymbolsDisplay = `<span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span>`;
             }
 
+            // Format constant display
+            const constantDisplay = entry.constant !== undefined && entry.constant !== null
+                ? `<span style="font-weight: 500; color: var(--primary-color);">${parseFloat(entry.constant).toFixed(2)}%</span>`
+                : '<em style="color: var(--text-tertiary);">N/A</em>';
+
             return `
                 <tr>
                     <td><strong>${this.escapeHtml(entry.disease_name)}</strong></td>
@@ -524,6 +567,7 @@ class GeneManager {
                             ${geneSymbolsDisplay}
                         </div>
                     </td>
+                    <td>${constantDisplay}</td>
                     <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(entry.description || '')}">
                         ${this.escapeHtml(entry.description) || '<em style="color: var(--text-tertiary);">No description</em>'}
                     </td>

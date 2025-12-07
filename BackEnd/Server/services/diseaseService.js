@@ -16,11 +16,26 @@ const diseaseService = {
   },
 
   /**
+   * Validate constant value (must be > 0 and <= 100)
+   * @param {number} constant - The constant value to validate
+   * @returns {boolean} - True if valid
+   */
+  validateConstant(constant) {
+    const num = parseFloat(constant);
+    return !isNaN(num) && num > 0 && num <= 100;
+  },
+
+  /**
    * Create a new disease and its associated gene symbols
-   * @param {Object} data - Disease data including gene_symbols array
+   * @param {Object} data - Disease data including gene_symbols array and constant
    * @returns {Promise<Object>} - Created disease
    */
   async createDisease(data) {
+    // Validate constant
+    if (!this.validateConstant(data.constant)) {
+      throw new Error('Constant must be a number greater than 0 and less than or equal to 100');
+    }
+
     const id = uuidv4();
     const now = new Date().toISOString();
 
@@ -28,8 +43,8 @@ const diseaseService = {
     const diseaseSql = `
       INSERT INTO diseases (
         id, hospital_id, disease_name, disease_code, 
-        description, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        description, constant, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await run(diseaseSql, [
@@ -38,6 +53,7 @@ const diseaseService = {
       data.disease_name,
       data.disease_code,
       data.description || '',
+      parseFloat(data.constant),
       now,
       now
     ]);
@@ -217,6 +233,15 @@ const diseaseService = {
       params.push(data.description);
     }
 
+    if (data.constant !== undefined) {
+      // Validate constant before updating
+      if (!this.validateConstant(data.constant)) {
+        throw new Error('Constant must be a number greater than 0 and less than or equal to 100');
+      }
+      updates.push('constant = ?');
+      params.push(parseFloat(data.constant));
+    }
+
     if (updates.length > 0) {
         updates.push('updated_at = ?');
         params.push(now);
@@ -281,6 +306,20 @@ const diseaseService = {
           continue;
         }
 
+        // Validate constant if provided, otherwise use default
+        let constantValue = 50.0; // Default value
+        if (entry.constant !== undefined && entry.constant !== '') {
+          if (!this.validateConstant(entry.constant)) {
+            results.skipped++;
+            results.errors.push({
+              entry: entry,
+              reason: 'Invalid constant value (must be > 0 and <= 100)'
+            });
+            continue;
+          }
+          constantValue = parseFloat(entry.constant);
+        }
+
         // 1. Check if the disease already exists (by hospitalId and disease_code)
         const existingDisease = await get('SELECT id, description FROM diseases WHERE hospital_id = ? AND disease_code = ?', 
                                         [hospitalId, entry.disease_code]);
@@ -296,8 +335,8 @@ const diseaseService = {
             const now = new Date().toISOString();
             const diseaseSql = `
               INSERT INTO diseases (
-                id, hospital_id, disease_name, disease_code, description, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                id, hospital_id, disease_name, disease_code, description, constant, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             await run(diseaseSql, [
@@ -306,6 +345,7 @@ const diseaseService = {
               entry.disease_name,
               entry.disease_code,
               entry.description || '',
+              constantValue,
               now,
               now
             ]);
@@ -366,6 +406,7 @@ const diseaseService = {
       SELECT DISTINCT disease_name, disease_code, 
              COUNT(*) as gene_count,
              MIN(description) as description,
+             MIN(constant) as constant,
              MIN(created_at) as created_at
       FROM diseases 
       WHERE hospital_id = ?

@@ -130,27 +130,6 @@ const GeneUtils = {
         localStorage.removeItem("mappedGeneSymbols");
         localStorage.removeItem("geneUploads");
         console.log("Gene data cleared from browser");
-    },
-
-    /**
-     * Blind gene data for PSI (to be implemented later)
-     * This is where you'd implement your blinding algorithm
-     * @param {Array<string>} geneSymbols - Gene symbols to blind
-     * @param {string} secretKey - Secret key for blinding
-     * @returns {Array} Blinded gene data
-     */
-    blindGeneData(geneSymbols, secretKey) {
-        // TODO: Implement your PSI blinding algorithm here
-        // This is just a placeholder
-        console.log("Blinding", geneSymbols.length, "genes for PSI");
-        
-        // Your actual blinding logic will go here
-        // This should return blinded/encrypted data that can be sent to backend
-        
-        return geneSymbols.map(gene => {
-            // Placeholder: actual blinding algorithm needed
-            return `blinded_${gene}_${secretKey}`;
-        });
     }
 };
 

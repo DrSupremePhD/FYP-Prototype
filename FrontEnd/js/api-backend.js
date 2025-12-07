@@ -645,7 +645,7 @@ const BackendAPI = {
     },
 
     // ===================================
-    // DISEASE MANAGEMENT (Hospital) - renamed from Gene Entries
+    // DISEASE MANAGEMENT (Hospital)
     // ===================================
 
     /**

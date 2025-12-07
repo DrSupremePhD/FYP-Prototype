@@ -436,26 +436,6 @@ app.listen(PORT, () => {
 // DISEASE CATEGORY ENDPOINTS
 // ===================================
 
-// Get all disease categories (WITHOUT genes for privacy)
-/* 
-app.get('/api/disease-categories', (req, res) => {
-  try {
-    const categories = diseaseService.getDiseaseCategories();
-    
-    // Remove genes before sending to frontend - critical for PSI privacy
-    const safeList = categories.map(({ genes, ...rest }) => rest);
-    
-    return res.status(200).json(safeList);
-  } catch (err) {
-    console.error('Get diseases error:', err);
-    return res.status(500).json({
-      error: 'Failed to retrieve diseases',
-      message: err.message
-    });
-  }
-});
-*/
-
 // NEW VERSION OF DISEASE CATEGORIES ENDPOINT - compared to above
 // GET /api/disease-categories - Public endpoint for patients to see available diseases
 // Returns disease info WITHOUT gene symbols for privacy
@@ -506,7 +486,7 @@ app.post('/api/backend_psi', async (req, res) => {
         }
 
         // ============================================
-        // UPDATED: Fetch disease genes from DATABASE
+        // Fetch disease genes from DATABASE
         // ============================================
         const diseaseData = await diseaseService.getDiseaseById(disease);
         
@@ -525,9 +505,7 @@ app.post('/api/backend_psi', async (req, res) => {
 
         console.log('  - Disease genes loaded from database:', diseaseGenes.length, 'genes');
 
-        // ============================================
         // Run PSI computation with gene symbols
-        // ============================================
         const result = psiService.compute(blinded_patient, diseaseGenes);
 
         console.log('PSI computation completed successfully');
@@ -538,6 +516,73 @@ app.post('/api/backend_psi', async (req, res) => {
         console.error('PSI computation error:', error);
         console.error('Stack trace:', error.stack);
         res.status(500).json({ error: 'PSI computation failed: ' + error.message });
+    }
+});
+
+// ===================================
+// PSI RISK CALCULATION ENDPOINT
+// ===================================
+
+// POST /api/psi/calculate-risk - Calculate risk percentage using disease constant
+app.post('/api/psi/calculate-risk', async (req, res) => {
+    try {
+        const { diseaseId, matchedCount, totalDiseaseGenes } = req.body;
+
+        console.log('Risk calculation request:');
+        console.log('  - Disease ID:', diseaseId);
+        console.log('  - Matched count:', matchedCount);
+        console.log('  - Total disease genes:', totalDiseaseGenes);
+
+        // Validate input
+        if (!diseaseId) {
+            return res.status(400).json({ error: 'Missing diseaseId' });
+        }
+
+        if (matchedCount === undefined || totalDiseaseGenes === undefined) {
+            return res.status(400).json({ 
+                error: 'Missing required fields',
+                required: ['diseaseId', 'matchedCount', 'totalDiseaseGenes']
+            });
+        }
+
+        // Get disease from database to retrieve constant
+        const disease = await diseaseService.getDiseaseById(diseaseId);
+
+        if (!disease) {
+            return res.status(404).json({ error: `Disease not found: ${diseaseId}` });
+        }
+
+        // Get the constant value (default to 100 if not set)
+        const constant = disease.constant !== undefined ? disease.constant : 100;
+
+        console.log('  - Disease constant:', constant);
+
+        // Calculate risk percentage: |matchedCount / totalDiseaseGenes| * constant
+        let percentage = 0;
+        if (totalDiseaseGenes > 0) {
+            percentage = Math.abs(matchedCount / totalDiseaseGenes) * constant;
+        }
+
+        // Cap at 100% maximum
+        //percentage = Math.min(percentage, 100);
+
+        console.log('  - Calculated risk percentage:', percentage.toFixed(2) + '%');
+
+        return res.json({
+            success: true,
+            diseaseId,
+            constant,
+            matchedCount,
+            totalDiseaseGenes,
+            riskPercentage: percentage
+        });
+
+    } catch (error) {
+        console.error('Risk calculation error:', error);
+        return res.status(500).json({ 
+            error: 'Risk calculation failed',
+            message: error.message 
+        });
     }
 });
 
@@ -777,9 +822,10 @@ app.get('/api/diseases/:id', async (req, res) => {
 });
 
 // Create a new disease
+// Create a new disease
 app.post('/api/diseases', async (req, res) => {
   try {
-    const { hospital_id, disease_name, disease_code, gene_symbols, gene_symbol, description } = req.body;
+    const { hospital_id, disease_name, disease_code, gene_symbols, gene_symbol, description, constant } = req.body;
 
     // Handle both gene_symbols (array) and gene_symbol (string) for backwards compatibility
     let geneSymbolsArray = [];
@@ -807,6 +853,23 @@ app.post('/api/diseases', async (req, res) => {
       });
     }
 
+    // Validate constant field
+    if (constant === undefined || constant === null || constant === '') {
+      return res.status(400).json({
+        error: 'Missing required field: constant',
+        hint: 'Constant must be a number greater than 0 and less than or equal to 100'
+      });
+    }
+
+    const constantNum = parseFloat(constant);
+    if (isNaN(constantNum) || constantNum <= 0 || constantNum > 100) {
+      return res.status(400).json({
+        error: 'Invalid constant value',
+        message: 'Constant must be a number greater than 0 and less than or equal to 100',
+        received: constant
+      });
+    }
+
     // Check if disease already exists
     const isDuplicateDisease = await diseaseService.checkDuplicateDisease(
       hospital_id,
@@ -820,13 +883,14 @@ app.post('/api/diseases', async (req, res) => {
       });
     }
 
-    // Create the disease with multiple gene symbols
+    // Create the disease with multiple gene symbols and constant
     const disease = await diseaseService.createDisease({
       hospital_id,
       disease_name,
       disease_code,
       gene_symbols: geneSymbolsArray,
-      description
+      description,
+      constant: constantNum
     });
 
     return res.status(201).json({

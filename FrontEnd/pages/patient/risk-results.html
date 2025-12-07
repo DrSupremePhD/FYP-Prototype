@@ -43,7 +43,7 @@
         }
 
         .risk-percentage {
-            font-size: var(--text-5xl);
+            font-size: var(--text-4xl);
             font-weight: 700;
         }
     </style>
@@ -230,13 +230,13 @@
 
             // Build HTML for all assessment cards
             const assessmentCards = sortedAssessments.map((assessment, index) => {
-                const overallRisk = Math.round(
+                const overallRisk = parseFloat(
                     assessment.overallRisk || 
                     assessment.overall_risk || 
                     assessment.riskPercentage || 
                     assessment.risk_percentage || 
                     0
-                );
+                ).toFixed(2);
                 
                 const diseaseId = assessment.diseaseId || assessment.disease_id;
                 
@@ -296,7 +296,7 @@
                             </span>
                         </div>
                         <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-lg);">
-                            Overall Intersect Score
+                            Disease Risk Percentage
                         </h3>
                         <div class="risk-gauge">
                             <div class="risk-gauge-circle">

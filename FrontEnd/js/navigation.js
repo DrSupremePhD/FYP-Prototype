@@ -64,7 +64,7 @@ const Navigation = {
         const userEmailElements = document.querySelectorAll('[data-user-email]');
         const userRoleElements = document.querySelectorAll('[data-user-role]');
 
-        // ✅ FIXED: Handle both snake_case (backend) and camelCase (frontend)
+        // Handle both snake_case (backend) and camelCase (frontend)
         const firstName = user.first_name || user.firstName || '';
         const lastName = user.last_name || user.lastName || '';
         const fullName = `${firstName} ${lastName}`.trim() || user.email.split('@')[0] || user.email;

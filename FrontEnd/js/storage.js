@@ -1,9 +1,11 @@
+// NOTE: 
+// This file is only in case backend database fails
+// If backend fails, it will fall back to this localStorage
+
 // ===================================
 // PRIVAGENE - STORAGE UTILITIES
 // LocalStorage wrapper for mock database
 // ===================================
-
-// BACKEND_INTEGRATION: Replace all localStorage operations with real API calls to your database
 
 const Storage = {
     // Initialize default data structure
@@ -27,23 +29,19 @@ const Storage = {
 
     // Generic get/set operations
     get(key) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/storage/{key}
         const data = localStorage.getItem(`privagene_${key}`);
         return data ? JSON.parse(data) : null;
     },
 
     set(key, value) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/storage/{key}
         localStorage.setItem(`privagene_${key}`, JSON.stringify(value));
     },
 
     remove(key) {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/storage/{key}
         localStorage.removeItem(`privagene_${key}`);
     },
 
     clear() {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/storage/clear
         const keys = Object.keys(localStorage);
         keys.forEach(key => {
             if (key.startsWith('privagene_')) {
@@ -54,7 +52,6 @@ const Storage = {
 
     // User operations
     addUser(user) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/users
         const users = this.get('users') || [];
         const newUser = {
             id: this.generateId(),
@@ -68,19 +65,16 @@ const Storage = {
     },
 
     getUser(email) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/users
         const users = this.get('users') || [];
         return users.find(u => u.email === email);
     },
 
     getUserById(id) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/users/{id}
         const users = this.get('users') || [];
         return users.find(u => u.id === id);
     },
 
     updateUser(id, updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/users/{id}
         const users = this.get('users') || [];
         const index = users.findIndex(u => u.id === id);
         if (index !== -1) {
@@ -96,21 +90,18 @@ const Storage = {
     },
 
     deleteUser(id) {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/users/{id}
         const users = this.get('users') || [];
         const filtered = users.filter(u => u.id !== id);
         this.set('users', filtered);
     },
 
     getCurrentUser() {
-        // Get current user from session storage
         const userJson = sessionStorage.getItem('privagene_current_user');
         return userJson ? JSON.parse(userJson) : null;
     },
 
     // Appointment operations
     addAppointment(appointment) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/appointments
         const appointments = this.get('appointments') || [];
         const newAppointment = {
             id: this.generateId(),
@@ -123,7 +114,6 @@ const Storage = {
     },
 
     getAppointments(userId, role) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/appointments?userId={userId}&role={role}
         const appointments = this.get('appointments') || [];
         if (role === 'patient') {
             return appointments.filter(a => a.patientId === userId);
@@ -134,7 +124,6 @@ const Storage = {
     },
 
     updateAppointment(id, updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/appointments/{id}
         const appointments = this.get('appointments') || [];
         const index = appointments.findIndex(a => a.id === id);
         if (index !== -1) {
@@ -146,7 +135,6 @@ const Storage = {
     },
 
     deleteAppointment(id) {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/appointments/{id}
         const appointments = this.get('appointments') || [];
         const filtered = appointments.filter(a => a.id !== id);
         this.set('appointments', filtered);
@@ -154,7 +142,6 @@ const Storage = {
 
     // Gene operations
     addGene(gene) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/genes
         const genes = this.get('genes_database') || [];
         const newGene = {
             id: this.generateId(),
@@ -167,12 +154,10 @@ const Storage = {
     },
 
     getGenes() {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/genes
         return this.get('genes_database') || [];
     },
 
     updateGene(id, updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/genes/{id}
         const genes = this.get('genes_database') || [];
         const index = genes.findIndex(g => g.id === id);
         if (index !== -1) {
@@ -184,7 +169,6 @@ const Storage = {
     },
 
     deleteGene(id) {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/genes/{id}
         const genes = this.get('genes_database') || [];
         const filtered = genes.filter(g => g.id !== id);
         this.set('genes_database', filtered);
@@ -192,7 +176,6 @@ const Storage = {
 
     // Gene upload operations (patient files)
     addGeneUpload(upload) {
-        // BACKEND_INTEGRATION: Replace with multipart file upload: POST /api/gene-uploads
         const uploads = this.get('gene_uploads') || [];
         const newUpload = {
             id: this.generateId(),
@@ -205,14 +188,12 @@ const Storage = {
     },
 
     getGeneUploads(userId) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/gene-uploads?userId={userId}
         const uploads = this.get('gene_uploads') || [];
         return uploads.filter(u => u.userId === userId);
     },
 
     // Risk assessment operations
     addRiskAssessment(assessment) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/risk-assessments
         const assessments = this.get('risk_assessments') || [];
         const newAssessment = {
             id: this.generateId(),
@@ -225,13 +206,11 @@ const Storage = {
     },
 
     getRiskAssessments(userId) {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/risk-assessments?userId={userId}
         const assessments = this.get('risk_assessments') || [];
         return assessments.filter(a => a.userId === userId);
     },
 
     updateRiskAssessment(id, updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/risk-assessments/{id}
         const assessments = this.get('risk_assessments') || [];
         const index = assessments.findIndex(a => a.id === id);
         if (index !== -1) {
@@ -244,7 +223,6 @@ const Storage = {
 
     // Organization operations
     addOrganization(org) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/organizations
         const orgs = this.get('organizations') || [];
         const newOrg = {
             id: this.generateId(),
@@ -258,12 +236,10 @@ const Storage = {
     },
 
     getOrganizations() {
-        // BACKEND_INTEGRATION: Replace with API call: GET /api/organizations
         return this.get('organizations') || [];
     },
 
     updateOrganization(id, updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/organizations/{id}
         const orgs = this.get('organizations') || [];
         const index = orgs.findIndex(o => o.id === id);
         if (index !== -1) {
@@ -276,7 +252,6 @@ const Storage = {
 
     // Analytics operations
     addAnalyticsData(data) {
-        // BACKEND_INTEGRATION: Analytics should be aggregated from real database queries
         const analytics = this.get('analytics_data') || [];
         analytics.push({
             id: this.generateId(),
@@ -287,7 +262,6 @@ const Storage = {
     },
 
     getAnalyticsData(filters = {}) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/analytics/query
         let data = this.get('analytics_data') || [];
 
         // Apply filters

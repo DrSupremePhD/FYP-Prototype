@@ -165,7 +165,7 @@ class ModalManager {
                 return;
             }
 
-            title.textContent = 'Edit Gene Entry';
+            title.textContent = 'Edit Disease';
             saveText.textContent = 'Update Entry';
             editIdInput.value = entryId;
 
@@ -184,12 +184,18 @@ class ModalManager {
             document.getElementById('geneSymbolInput').value = geneSymbolsStr;
             
             document.getElementById('descriptionInput').value = entry.description || '';
+            
+            // Populate constant field
+            const constantInput = document.getElementById('constantInput');
+            if (constantInput) {
+                constantInput.value = entry.constant !== undefined ? entry.constant : '';
+            }
 
             // Update hash preview
             this.updateHashPreview(geneSymbolsStr);
         } else {
             // Add mode
-            title.textContent = 'Add Gene Entry';
+            title.textContent = 'Add Disease';
             saveText.textContent = 'Save Entry';
             editIdInput.value = '';
         }
@@ -219,12 +225,25 @@ class ModalManager {
             disease_name: document.getElementById('diseaseNameInput').value.trim(),
             disease_code: document.getElementById('diseaseCodeInput').value.trim(),
             gene_symbol: document.getElementById('geneSymbolInput').value.trim(),
-            description: document.getElementById('descriptionInput').value.trim()
+            description: document.getElementById('descriptionInput').value.trim(),
+            constant: document.getElementById('constantInput').value.trim()
         };
 
         // Validation
         if (!data.disease_name || !data.disease_code || !data.gene_symbol) {
             this.geneManager.showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+
+        // Validate constant
+        if (!data.constant) {
+            this.geneManager.showNotification('Please enter a constant value', 'error');
+            return;
+        }
+
+        const constantNum = parseFloat(data.constant);
+        if (isNaN(constantNum) || constantNum <= 0 || constantNum > 100) {
+            this.geneManager.showNotification('Constant must be a number greater than 0 and less than or equal to 100', 'error');
             return;
         }
 
@@ -482,7 +501,15 @@ class ModalManager {
 
         this.deleteEntryId = entryId;
 
-        // Show entry info
+        // Handle gene symbols display
+        let geneDisplay = '';
+        if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+            geneDisplay = entry.gene_symbols.map(s => `<span class="gene-tag">${this.escapeHtml(s)}</span>`).join(' ');
+        } else if (entry.gene_symbol) {
+            geneDisplay = `<span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span>`;
+        }
+
+        // Show entry info including constant
         infoDiv.innerHTML = `
             <div style="margin-bottom: 8px;">
                 <strong>Disease:</strong> ${this.escapeHtml(entry.disease_name)}
@@ -490,8 +517,11 @@ class ModalManager {
             <div style="margin-bottom: 8px;">
                 <strong>Code:</strong> <code>${this.escapeHtml(entry.disease_code)}</code>
             </div>
+            <div style="margin-bottom: 8px;">
+                <strong>Genes:</strong> ${geneDisplay}
+            </div>
             <div>
-                <strong>Gene:</strong> <span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span>
+                <strong>Constant:</strong> ${entry.constant !== undefined ? entry.constant + '%' : 'N/A'}
             </div>
         `;
 
@@ -571,4 +601,3 @@ class ModalManager {
 
 // Export globally
 window.ModalManager = ModalManager;
-
