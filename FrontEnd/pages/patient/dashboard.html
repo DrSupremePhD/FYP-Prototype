@@ -178,24 +178,24 @@
             Auth.logout();
         });
 
-        // Load disease categories
+        // Load disease categories from backend database
         async function loadDiseaseCategories() {
             try {
+                // This now fetches from the real database via /api/disease-categories
                 diseaseCategories = await API.getDiseaseCategories();
-                console.log('📚 Disease categories loaded:', diseaseCategories);
+                console.log('📚 Disease categories loaded from database:', diseaseCategories);
             } catch (error) {
                 console.error('Failed to load disease categories:', error);
+                diseaseCategories = [];
             }
         }
 
         // Get uploaded gene file name from localStorage
         function getUploadedGeneFileName() {
             try {
-                // Use GeneUtils to get upload history
                 const uploads = GeneUtils.getUploadHistory();
                 
                 if (uploads && uploads.length > 0) {
-                    // Get the most recent upload
                     const latestUpload = uploads[uploads.length - 1];
                     return latestUpload.fileName;
                 }
@@ -212,7 +212,7 @@
             console.log('🔍 Loading dashboard for user:', user);
             
             try {
-                // Load disease categories first
+                // Load disease categories first (from backend database)
                 await loadDiseaseCategories();
                 
                 // Get gene file name
@@ -233,17 +233,13 @@
                 console.log('✅ Risk assessments received:', assessments);
                 console.log('📊 Number of assessments:', assessments ? assessments.length : 0);
                 
-
-                // ✅ UPDATE STATS
-                //document.getElementById('uploadFileName').textContent = uploads.length;
+                // Update stats
                 document.getElementById('assessmentCount').textContent = assessments.length;
 
-
-                // ✅ SHOW OVERALL RISK from most recent assessment
+                // Show overall risk from most recent assessment
                 if (assessments && assessments.length > 0) {
                     console.log('📈 Processing latest assessment...');
                     
-                    // Sort to get the most recent
                     const sortedByDate = [...assessments].sort((a, b) => {
                         const dateA = new Date(a.created_at || a.createdAt);
                         const dateB = new Date(b.created_at || b.createdAt);
@@ -260,34 +256,17 @@
                                 0;
                     
                     console.log('Risk value:', risk);
-                    
-                    let color, level;
-
-                    if (risk < 30) {
-                        color = 'var(--success-color)';
-                        level = 'Low';
-                    } else if (risk < 70) {
-                        color = 'var(--warning-color)';
-                        level = 'Medium';
-                    } else {
-                        color = 'var(--error-color)';
-                        level = 'High';
-                    }
-
-                    document.getElementById('recentRiskAssessments').innerHTML;
-                        
                 } else {
                     console.log('⚠️ No assessments found');
                 }
 
-                // ✅ DISPLAY RECENT RESULTS (sorted by date, newest first)
+                // Display recent results (sorted by date, newest first)
                 const sortedAssessments = assessments.sort((a, b) => {
                     const dateA = new Date(a.created_at || a.createdAt);
                     const dateB = new Date(b.created_at || b.createdAt);
-                    return dateB - dateA; // Newest first
+                    return dateB - dateA;
                 });
                 displayRecentResults(sortedAssessments.slice(0, 3));
-
 
             } catch (error) {
                 console.error('❌ Error loading dashboard:', error);
@@ -296,7 +275,7 @@
             }
         }
 
-        // Update displayRecentResults to use loaded categories
+        // Display recent results - uses disease categories loaded from database
         function displayRecentResults(assessments) {
             const container = document.getElementById('recentResults');
 
@@ -329,7 +308,7 @@
                                 assessment.disease || 
                                 'Unknown';
                 
-                // Find disease name from loaded categories
+                // Find disease name from loaded categories (now from database)
                 const disease = diseaseCategories.find(d => d.id === diseaseId);
                 const diseaseName = disease ? disease.name : diseaseId;
                 
@@ -357,26 +336,26 @@
 
             if (appointments.length === 0) {
                 container.innerHTML = `
-          <div class="empty-state" style="padding: var(--space-xl);">
-            <div class="empty-state-icon">📅</div>
-            <div class="empty-state-description">No upcoming appointments</div>
-            <a href="appointments.html" class="btn btn-primary btn-sm">Book Appointment</a>
-          </div>
-        `;
+                    <div class="empty-state" style="padding: var(--space-xl);">
+                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-description">No upcoming appointments</div>
+                        <a href="appointments.html" class="btn btn-primary btn-sm">Book Appointment</a>
+                    </div>
+                `;
                 return;
             }
 
             container.innerHTML = appointments.map(apt => `
-        <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
-          <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-              <div style="font-weight: 500;">${apt.reason || 'Genetic Counseling'}</div>
-              <div class="text-secondary text-sm">${UI.formatDate(apt.date)} at ${apt.slot}</div>
-            </div>
-            <span class="badge badge-success">Confirmed</span>
-          </div>
-        </div>
-      `).join('');
+                <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div style="font-weight: 500;">${apt.reason || 'Genetic Counseling'}</div>
+                            <div class="text-secondary text-sm">${UI.formatDate(apt.date)} at ${apt.slot}</div>
+                        </div>
+                        <span class="badge badge-success">Confirmed</span>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // Load dashboard on page load

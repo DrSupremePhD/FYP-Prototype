@@ -147,13 +147,14 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
-        // Cache for disease categories
+        // Cache for disease categories (loaded from database)
         let diseaseCategories = [];
 
         async function loadDiseaseCategories() {
             try {
-                diseaseCategories = await BackendAPI.getDiseaseCategories();
-                console.log('Disease categories loaded:', diseaseCategories);
+                // Fetch from backend database
+                diseaseCategories = await API.getDiseaseCategories();
+                console.log('Disease categories loaded from database:', diseaseCategories);
             } catch (error) {
                 console.error('Failed to load disease categories:', error);
                 diseaseCategories = [];
@@ -170,14 +171,19 @@
             return disease ? disease.hospitalId : 'Unknown';
         }
 
+        function getDiseaseCode(diseaseId) {
+            const disease = diseaseCategories.find(d => d.id === diseaseId);
+            return disease ? disease.diseaseCode : null;
+        }
+
         async function loadResults() {
             try {
-                // First load disease categories to map IDs to names
+                // First load disease categories from database to map IDs to names
                 await loadDiseaseCategories();
                 
-                // Retrieve ALL risk assessments for this user
+                // Retrieve ALL risk assessments for this user from database
                 console.log('=== Fetching risk assessments from database ===');
-                const assessments = await BackendAPI.getRiskAssessments(user.id);
+                const assessments = await API.getRiskAssessments(user.id);
                 
                 console.log('=== ALL RISK ASSESSMENTS ===');
                 console.log('Total assessments found:', assessments.length);
@@ -217,15 +223,27 @@
         function displayAllAssessments(assessments) {
             // Sort by date (most recent first)
             const sortedAssessments = [...assessments].sort((a, b) => {
-                return new Date(b.createdAt) - new Date(a.createdAt);
+                const dateA = new Date(a.created_at || a.createdAt);
+                const dateB = new Date(b.created_at || b.createdAt);
+                return dateB - dateA;
             });
 
             // Build HTML for all assessment cards
             const assessmentCards = sortedAssessments.map((assessment, index) => {
-                const overallRisk = Math.round(assessment.overallRisk);
+                const overallRisk = Math.round(
+                    assessment.overallRisk || 
+                    assessment.overall_risk || 
+                    assessment.riskPercentage || 
+                    assessment.risk_percentage || 
+                    0
+                );
                 
-                // Look up disease name from disease ID
-                const diseaseName = getDiseaseName(assessment.diseaseId);
+                const diseaseId = assessment.diseaseId || assessment.disease_id;
+                
+                // Look up disease name from database-loaded categories
+                const diseaseName = getDiseaseName(diseaseId);
+                const hospitalId = getHospitalId(diseaseId);
+                const diseaseCode = getDiseaseCode(diseaseId);
                 
                 // Determine risk level and color
                 let riskLevel, riskColor;
@@ -241,7 +259,7 @@
                 }
 
                 // Parse matched genes if it's a JSON string
-                let matchedGenes = assessment.matchedGenes;
+                let matchedGenes = assessment.matchedGenes || assessment.matched_genes;
                 if (typeof matchedGenes === 'string') {
                     try {
                         matchedGenes = JSON.parse(matchedGenes);
@@ -250,11 +268,12 @@
                     }
                 }
 
+                const matchCount = assessment.matchCount || assessment.match_count || 0;
                 const geneList = matchedGenes && matchedGenes.length > 0 
                     ? ` Matching genes: ${matchedGenes.join(', ')}.` 
                     : '';
 
-                const hospitalId = getHospitalId(assessment.diseaseId);
+                const createdAt = assessment.createdAt || assessment.created_at;
 
                 return `
                     <div class="card text-center" style="margin-bottom: var(--space-2xl);">
@@ -265,10 +284,15 @@
                                     <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
                                         🏥 Provider: ${hospitalId}
                                     </span>
+                                    ${diseaseCode ? `
+                                    <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">
+                                        Code: ${diseaseCode}
+                                    </span>
+                                    ` : ''}
                                 </div>
                             </div>
                             <span class="text-secondary text-sm">
-                                ${UI.formatDateTime(assessment.createdAt)}
+                                ${UI.formatDateTime(createdAt)}
                             </span>
                         </div>
                         <h3 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-lg);">
@@ -286,7 +310,7 @@
                         
                         <p class="text-secondary">
                             Your genetic risk for ${diseaseName} is <strong style="color: ${riskColor};">${riskLevel.toLowerCase()}</strong>. 
-                            ${assessment.matchCount} gene(s) match, resulting in a ${overallRisk}% intersection score.${geneList}
+                            ${matchCount} gene(s) match, resulting in a ${overallRisk}% intersection score.${geneList}
                         </p>
                     </div>
                 `;

@@ -437,7 +437,7 @@ app.listen(PORT, () => {
 // ===================================
 
 // Get all disease categories (WITHOUT genes for privacy)
-// Matches Flask: GET /api/disease-categories
+/* 
 app.get('/api/disease-categories', (req, res) => {
   try {
     const categories = diseaseService.getDiseaseCategories();
@@ -454,66 +454,91 @@ app.get('/api/disease-categories', (req, res) => {
     });
   }
 });
+*/
+
+// NEW VERSION OF DISEASE CATEGORIES ENDPOINT - compared to above
+// GET /api/disease-categories - Public endpoint for patients to see available diseases
+// Returns disease info WITHOUT gene symbols for privacy
+app.get('/api/disease-categories', async (req, res) => {
+    try {
+        // Get all diseases from database
+        const diseases = await diseaseService.getAllDiseases();
+        
+        // Strip out sensitive gene information before sending to frontend
+        const safeCategories = diseases.map(disease => ({
+            id: disease.id,
+            name: disease.disease_name,
+            description: disease.description || '',
+            hospitalId: disease.hospital_id,
+            diseaseCode: disease.disease_code,
+            createdAt: disease.created_at
+            // gene_symbols and gene_details are intentionally excluded
+        }));
+        
+        res.json(safeCategories);
+    } catch (error) {
+        console.error('Error fetching disease categories:', error);
+        res.status(500).json({ error: 'Failed to fetch disease categories' });
+    }
+});
 
 // ===================================
 // PSI COMPUTATION ENDPOINT
 // ===================================
 
 // Backend PSI computation
-// Matches Flask: POST /api/backend_psi
-app.post('/api/backend_psi', (req, res) => {
-  try {
-    const data = req.body;
-    
-    console.log("=== Incoming PSI payload ===");
-    console.log(data);
-    console.log();
-    console.log(`${data.blinded_patient?.length || 0} blinded patient values`);
-    console.log("=== End of payload ===");
+// POST /api/backend_psi - PSI computation endpoint
+app.post('/api/backend_psi', async (req, res) => {
+    try {
+        const { blinded_patient, disease } = req.body;
 
-    // Extract from frontend body
-    const blindedPatientValues = data.blinded_patient;
-    const diseaseId = data.disease;
+        console.log('PSI Request received:');
+        console.log('  - Disease ID:', disease);
+        console.log('  - Blinded patient values:', blinded_patient?.length || 0);
 
-    if (!blindedPatientValues || !diseaseId) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        required: ['blinded_patient', 'disease']
-      });
+        // Validate input
+        if (!blinded_patient || !Array.isArray(blinded_patient)) {
+            return res.status(400).json({ error: 'Missing or invalid blinded_patient array' });
+        }
+
+        if (!disease) {
+            return res.status(400).json({ error: 'Missing disease ID' });
+        }
+
+        // ============================================
+        // UPDATED: Fetch disease genes from DATABASE
+        // ============================================
+        const diseaseData = await diseaseService.getDiseaseById(disease);
+        
+        if (!diseaseData) {
+            console.error('Disease not found:', disease);
+            return res.status(404).json({ error: `Disease not found: ${disease}` });
+        }
+
+        // Get the gene symbols array from the database result
+        const diseaseGenes = diseaseData.gene_symbols;
+        
+        if (!diseaseGenes || diseaseGenes.length === 0) {
+            console.error('No genes found for disease:', disease);
+            return res.status(404).json({ error: 'No genes found for this disease' });
+        }
+
+        console.log('  - Disease genes loaded from database:', diseaseGenes.length, 'genes');
+
+        // ============================================
+        // Run PSI computation with gene symbols
+        // ============================================
+        const result = psiService.compute(blinded_patient, diseaseGenes);
+
+        console.log('PSI computation completed successfully');
+        
+        res.json(result);
+
+    } catch (error) {
+        console.error('PSI computation error:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'PSI computation failed: ' + error.message });
     }
-
-    if (!Array.isArray(blindedPatientValues)) {
-      return res.status(400).json({
-        error: 'blinded_patient must be an array'
-      });
-    }
-
-    console.log(`disease_id: ${diseaseId}`);
-
-    // Get disease genes from database (server-side only)
-    // Get disease genes from database (server-side only)
-    const diseaseGenes = diseaseService.getDiseaseGenes(diseaseId);  // ✅ CORRECT function name
-
-    if (!diseaseGenes) {
-      return res.status(404).json({
-        error: 'Disease not found',
-        diseaseId: diseaseId
-      });
-    }
-
-    console.log(`Disease has ${diseaseGenes.length} genes`);
-
-    // Run backend PSI compute() - matches Python PSI class
-    const result = psiService.compute(blindedPatientValues, diseaseGenes);
-
-    return res.json(result);
-  } catch (err) {
-    console.error('PSI computation error:', err);
-    return res.status(500).json({
-      error: 'PSI computation failed',
-      message: err.message
-    });
-  }
 });
 
 // ===================================
@@ -636,9 +661,6 @@ app.delete('/api/risk-assessments/:assessmentId', async (req, res) => {
 // ===================================
 // DISEASE MANAGEMENT ENDPOINTS 
 // ===================================
-
-// Add this at the top with other service imports:
-// const diseaseService = require('./services/diseaseService');
 
 // Get all diseases for a hospital
 app.get('/api/diseases', async (req, res) => {

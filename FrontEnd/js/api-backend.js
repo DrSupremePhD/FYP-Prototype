@@ -256,9 +256,24 @@ const BackendAPI = {
                 throw new Error('Failed to load disease categories');
             }
 
-            const categories = await response.json();
-            console.log('Disease categories loaded:', categories);
-            return categories;
+            const data = await response.json();
+            
+            // Handle both response formats (array or {categories: array})
+            const categories = Array.isArray(data) ? data : (data.categories || []);
+            
+            // Normalize the response to match expected frontend format
+            // Map database fields to frontend expected fields
+            const normalizedCategories = categories.map(cat => ({
+                id: cat.id,
+                name: cat.disease_name || cat.name,
+                description: cat.description || '',
+                hospitalId: cat.hospital_id || cat.hospitalId,
+                diseaseCode: cat.disease_code || cat.diseaseCode
+                // NOTE: gene_symbols are intentionally NOT included for privacy
+            }));
+            
+            console.log('Disease categories loaded:', normalizedCategories);
+            return normalizedCategories;
         } catch (error) {
             console.error('Error fetching disease categories:', error);
             throw error;

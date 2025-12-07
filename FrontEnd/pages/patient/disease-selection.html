@@ -118,7 +118,7 @@
 
         async function loadCategories() {
             try {
-                // FRONTEND ONLY: Check localStorage for uploaded file
+                // Check localStorage for uploaded file
                 const uploads = JSON.parse(localStorage.getItem("geneUploads") || "[]");
 
                 if (uploads.length === 0) {
@@ -127,24 +127,40 @@
                     return;
                 }
 
-                // BACKEND_INTEGRATION: API.getDiseaseCategories() will fetch from backend
-                // Will NOT get genes due to PSI privacy design
-                const categories = await BackendAPI.getDiseaseCategories();
+                // Fetch disease categories from backend database
+                // Note: This does NOT return gene symbols (privacy by design)
+                const categories = await API.getDiseaseCategories();
                 const container = document.getElementById('categories-list');
 
                 categoriesList = categories;
+
+                if (categories.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: var(--space-xl);">
+                            <div class="empty-state-icon">🔬</div>
+                            <div class="empty-state-description">No disease categories available yet</div>
+                            <p class="text-secondary">Please check back later or contact support.</p>
+                        </div>
+                    `;
+                    return;
+                }
 
                 container.innerHTML = categories.map(category => `
                     <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
                         <input type="checkbox" value="${category.id}" class="category-checkbox" style="margin-right: var(--space-md);">
                         <div style="flex: 1;">
-                        <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
-                        <div class="text-secondary text-sm">${category.description}</div>
-                        <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
-                            <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                            🏥 Provider: ${category.hospitalId}
-                            </span>
-                        </div>
+                            <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
+                            <div class="text-secondary text-sm">${category.description || 'No description available'}</div>
+                            <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
+                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                                    🏥 Provider: ${category.hospitalId || 'Unknown'}
+                                </span>
+                                ${category.diseaseCode ? `
+                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">
+                                    Code: ${category.diseaseCode}
+                                </span>
+                                ` : ''}
+                            </div>
                         </div>
                     </label>
                 `).join('');
@@ -163,7 +179,7 @@
 
             } catch (error) {
                 console.error('Error loading categories:', error);
-                UI.showAlert('Failed to load disease categories', 'error');
+                UI.showAlert('Failed to load disease categories: ' + error.message, 'error');
             }
         }
 
@@ -199,8 +215,9 @@
                     });
                 }
 
+                // Save results to backend database
                 for (const entry of allResults) {
-                    await BackendAPI.createRiskAssessment({
+                    await API.createRiskAssessment({
                         userId: user.id,
                         overallRisk: entry.result.riskPercentage,
                         diseaseId: entry.disease,
@@ -212,24 +229,19 @@
 
                 console.log("🟩 Final aggregated PSI results:", allResults);
 
-                // Save to localStorage
+                // Save to localStorage as backup
                 localStorage.setItem("psiResult", JSON.stringify(allResults));
 
-                //console.log("🚫 Redirect disabled for debugging");
                 window.location.href = "risk-results.html";
 
             } catch (error) {
                 console.error("PSI Error:", error);
-                UI.showAlert("PSI computation failed", "error");
+                UI.showAlert("PSI computation failed: " + error.message, "error");
             } finally {
                 computeBtn.disabled = false;
                 UI.hideLoading();
             }
         });
-
-
-
-
 
         loadCategories();
     </script>
