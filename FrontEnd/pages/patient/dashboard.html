@@ -55,12 +55,6 @@
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a href="appointments.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📅</span>
-                        Appointments
-                    </a>
-                </li>
-                <li class="sidebar-item">
                     <a href="profile.html" class="sidebar-link">
                         <span class="sidebar-link-icon">👤</span>
                         Profile
@@ -133,7 +127,7 @@
                 </div>
             </div>
 
-            <!-- Recent Activity & Upcoming Appointments -->
+            <!-- Recent Activity -->
             <div class="grid grid-cols-1 gap-xl">
                 <!-- Recent Results -->
                 <div class="card">
@@ -329,33 +323,6 @@
                     </div>
                 `;
             }).join('');
-        }
-
-        function displayUpcomingAppointments(appointments) {
-            const container = document.getElementById('upcomingAppointments');
-
-            if (appointments.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="padding: var(--space-xl);">
-                        <div class="empty-state-icon">📅</div>
-                        <div class="empty-state-description">No upcoming appointments</div>
-                        <a href="appointments.html" class="btn btn-primary btn-sm">Book Appointment</a>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = appointments.map(apt => `
-                <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div>
-                            <div style="font-weight: 500;">${apt.reason || 'Genetic Counseling'}</div>
-                            <div class="text-secondary text-sm">${UI.formatDate(apt.date)} at ${apt.slot}</div>
-                        </div>
-                        <span class="badge badge-success">Confirmed</span>
-                    </div>
-                </div>
-            `).join('');
         }
 
         // Load dashboard on page load
