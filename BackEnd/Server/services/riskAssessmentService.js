@@ -136,6 +136,217 @@ const riskAssessmentService = {
       ...assessment,
       matchedGenes: JSON.parse(assessment.matchedGenes || '[]')
     };
+  },
+
+  // ===================================
+  // RESEARCHER ANALYTICS METHODS
+  // ===================================
+
+  /**
+   * Get all assessments from users who have consented to research data sharing
+   * @returns {Promise<Array>} Array of assessments from consented users
+   */
+  async getConsentedAssessments() {
+    const assessments = await all(`
+      SELECT 
+        ra.id,
+        ra.user_id as userId,
+        ra.overall_risk as overallRisk,
+        ra.disease_id as diseaseId,
+        ra.match_count as matchCount,
+        ra.matched_genes as matchedGenes,
+        ra.risk_percentage as riskPercentage,
+        ra.created_at as createdAt
+      FROM risk_assessments ra
+      INNER JOIN users u ON ra.user_id = u.id
+      WHERE u.research_consent = 1
+      ORDER BY ra.created_at DESC
+    `);
+    
+    return assessments.map(a => ({
+      ...a,
+      matchedGenes: JSON.parse(a.matchedGenes || '[]')
+    }));
+  },
+
+  /**
+   * Get disease statistics with assessment counts from consented users
+   * Groups by disease and includes hospital info
+   * @returns {Promise<Array>} Array of disease stats
+   */
+  async getDiseaseStatisticsForResearch() {
+    const stats = await all(`
+      SELECT 
+        d.id as diseaseId,
+        d.disease_name as diseaseName,
+        d.disease_code as diseaseCode,
+        d.description,
+        d.hospital_id as hospitalId,
+        u.organization_name as hospitalName,
+        u.first_name as hospitalFirstName,
+        u.last_name as hospitalLastName,
+        COUNT(ra.id) as assessmentCount,
+        AVG(ra.risk_percentage) as avgRiskPercentage,
+        MAX(ra.risk_percentage) as maxRiskPercentage,
+        MIN(ra.risk_percentage) as minRiskPercentage,
+        SUM(CASE WHEN ra.risk_percentage >= 70 THEN 1 ELSE 0 END) as highRiskCount
+      FROM diseases d
+      LEFT JOIN users u ON d.hospital_id = u.id
+      LEFT JOIN risk_assessments ra ON d.id = ra.disease_id
+        AND ra.user_id IN (SELECT id FROM users WHERE research_consent = 1)
+      GROUP BY d.id, d.disease_name, d.disease_code, d.description, 
+               d.hospital_id, u.organization_name, u.first_name, u.last_name
+      ORDER BY assessmentCount DESC, d.disease_name ASC
+    `);
+    
+    return stats.map(s => ({
+      ...s,
+      hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
+      avgRiskPercentage: s.avgRiskPercentage ? Math.round(s.avgRiskPercentage * 10) / 10 : null
+    }));
+  },
+
+  /**
+   * Get detailed analytics for a specific disease (from consented users only)
+   * @param {string} diseaseId - Disease ID
+   * @returns {Promise<Object>} Disease analytics
+   */
+  async getDiseaseAnalytics(diseaseId) {
+    // Get basic disease info
+    const diseaseInfo = await get(`
+      SELECT 
+        d.id as diseaseId,
+        d.disease_name as diseaseName,
+        d.disease_code as diseaseCode,
+        d.description,
+        d.constant,
+        d.hospital_id as hospitalId,
+        u.organization_name as hospitalName,
+        u.first_name as hospitalFirstName,
+        u.last_name as hospitalLastName
+      FROM diseases d
+      LEFT JOIN users u ON d.hospital_id = u.id
+      WHERE d.id = ?
+    `, [diseaseId]);
+
+    if (!diseaseInfo) return null;
+
+    // Get all assessments for this disease from consented users
+    const assessments = await all(`
+      SELECT 
+        ra.id,
+        ra.overall_risk as overallRisk,
+        ra.match_count as matchCount,
+        ra.matched_genes as matchedGenes,
+        ra.risk_percentage as riskPercentage,
+        ra.created_at as createdAt
+      FROM risk_assessments ra
+      INNER JOIN users u ON ra.user_id = u.id
+      WHERE ra.disease_id = ?
+        AND u.research_consent = 1
+      ORDER BY ra.created_at DESC
+    `, [diseaseId]);
+
+    // Calculate statistics
+    const totalAssessments = assessments.length;
+    const riskPercentages = assessments.map(a => a.riskPercentage).filter(r => r !== null);
+    
+    const avgRisk = riskPercentages.length > 0 
+      ? Math.round((riskPercentages.reduce((sum, r) => sum + r, 0) / riskPercentages.length) * 10) / 10
+      : null;
+    
+    const highRiskCount = riskPercentages.filter(r => r >= 70).length;
+    const mediumRiskCount = riskPercentages.filter(r => r >= 40 && r < 70).length;
+    const lowRiskCount = riskPercentages.filter(r => r < 40).length;
+
+    // Risk distribution for charts
+    const riskDistribution = {
+      low: lowRiskCount,
+      medium: mediumRiskCount,
+      high: highRiskCount
+    };
+
+    // Monthly trend data (last 6 months)
+    const monthlyTrend = await all(`
+      SELECT 
+        strftime('%Y-%m', ra.created_at) as month,
+        COUNT(*) as count,
+        AVG(ra.risk_percentage) as avgRisk
+      FROM risk_assessments ra
+      INNER JOIN users u ON ra.user_id = u.id
+      WHERE ra.disease_id = ?
+        AND u.research_consent = 1
+        AND ra.created_at >= date('now', '-6 months')
+      GROUP BY strftime('%Y-%m', ra.created_at)
+      ORDER BY month ASC
+    `, [diseaseId]);
+
+    return {
+      ...diseaseInfo,
+      hospitalName: diseaseInfo.hospitalName || `${diseaseInfo.hospitalFirstName || ''} ${diseaseInfo.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
+      statistics: {
+        totalAssessments,
+        avgRisk,
+        highRiskCount,
+        mediumRiskCount,
+        lowRiskCount,
+        riskDistribution
+      },
+      monthlyTrend: monthlyTrend.map(t => ({
+        month: t.month,
+        count: t.count,
+        avgRisk: t.avgRisk ? Math.round(t.avgRisk * 10) / 10 : 0
+      })),
+      // Return anonymized assessments (no user IDs)
+      recentAssessments: assessments.slice(0, 20).map(a => ({
+        id: a.id,
+        riskPercentage: a.riskPercentage,
+        matchCount: a.matchCount,
+        matchedGenes: JSON.parse(a.matchedGenes || '[]'),
+        createdAt: a.createdAt
+      }))
+    };
+  },
+
+  /**
+   * Search disease statistics by disease name or hospital name
+   * @param {string} searchTerm - Search term
+   * @returns {Promise<Array>} Matching disease stats
+   */
+  async searchDiseaseStatistics(searchTerm) {
+    const term = `%${searchTerm}%`;
+    
+    const stats = await all(`
+      SELECT 
+        d.id as diseaseId,
+        d.disease_name as diseaseName,
+        d.disease_code as diseaseCode,
+        d.description,
+        d.hospital_id as hospitalId,
+        u.organization_name as hospitalName,
+        u.first_name as hospitalFirstName,
+        u.last_name as hospitalLastName,
+        COUNT(ra.id) as assessmentCount,
+        AVG(ra.risk_percentage) as avgRiskPercentage,
+        SUM(CASE WHEN ra.risk_percentage >= 70 THEN 1 ELSE 0 END) as highRiskCount
+      FROM diseases d
+      LEFT JOIN users u ON d.hospital_id = u.id
+      LEFT JOIN risk_assessments ra ON d.id = ra.disease_id
+        AND ra.user_id IN (SELECT id FROM users WHERE research_consent = 1)
+      WHERE d.disease_name LIKE ?
+         OR d.disease_code LIKE ?
+         OR u.organization_name LIKE ?
+         OR (u.first_name || ' ' || u.last_name) LIKE ?
+      GROUP BY d.id, d.disease_name, d.disease_code, d.description, 
+               d.hospital_id, u.organization_name, u.first_name, u.last_name
+      ORDER BY assessmentCount DESC, d.disease_name ASC
+    `, [term, term, term, term]);
+    
+    return stats.map(s => ({
+      ...s,
+      hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
+      avgRiskPercentage: s.avgRiskPercentage ? Math.round(s.avgRiskPercentage * 10) / 10 : null
+    }));
   }
 };
 

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
   specialty TEXT,
   institution TEXT,
   research_area TEXT,
+  research_consent INTEGER DEFAULT 0,  -- NEW: 0 = no consent, 1 = consented
   status TEXT DEFAULT 'active',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -26,6 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_research_consent ON users(research_consent);  -- NEW: Index for filtering consented users
+
+-- Add research_consent column to existing users table if it doesn't exist
+-- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we handle this gracefully
+-- This will fail silently if column already exists when run through migrations
+-- ALTER TABLE users ADD COLUMN research_consent INTEGER DEFAULT 0;
 
 -- documents table: stores metadata only (no sensitive genetic data)
 CREATE TABLE IF NOT EXISTS documents (
@@ -55,6 +62,7 @@ INSERT OR IGNORE INTO users (
     first_name, 
     last_name, 
     status,
+    research_consent,
     created_at,
     updated_at
 ) VALUES (
@@ -65,11 +73,12 @@ INSERT OR IGNORE INTO users (
     'System',
     'Administrator',
     'active',
+    0,
     datetime('now'),
     datetime('now')
 );
 
--- Insert test patient user
+-- Insert test patient user (with research consent)
 INSERT OR IGNORE INTO users (
     id, 
     email, 
@@ -78,6 +87,7 @@ INSERT OR IGNORE INTO users (
     first_name, 
     last_name, 
     status,
+    research_consent,
     created_at,
     updated_at
 ) VALUES (
@@ -88,6 +98,7 @@ INSERT OR IGNORE INTO users (
     'Test',
     'Patient',
     'active',
+    1,
     datetime('now'),
     datetime('now')
 );
@@ -103,6 +114,7 @@ INSERT OR IGNORE INTO users (
     organization_name,
     license_number,
     status,
+    research_consent,
     created_at,
     updated_at
 ) VALUES (
@@ -115,6 +127,7 @@ INSERT OR IGNORE INTO users (
     'City General Hospital',
     'LIC123456',
     'active',
+    0,
     datetime('now'),
     datetime('now')
 );
@@ -130,6 +143,7 @@ INSERT OR IGNORE INTO users (
     institution,
     research_area,
     status,
+    research_consent,
     created_at,
     updated_at
 ) VALUES (
@@ -142,6 +156,7 @@ INSERT OR IGNORE INTO users (
     'Research University',
     'Genomics',
     'active',
+    0,
     datetime('now'),
     datetime('now')
 );
@@ -223,7 +238,7 @@ INSERT OR IGNORE INTO diseases (
     'hospital_test_1',
     'Breast Cancer',
     'BRCA-2024',
-    'Hereditary breast cancer risk assessment based on BRCA1/BRCA2 mutations',
+    'Hereditary breast cancer associated with BRCA1 and BRCA2 mutations',
     75.0,
     datetime('now'),
     datetime('now')
@@ -232,16 +247,13 @@ INSERT OR IGNORE INTO diseases (
 -- Disease 1 Genes
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
 VALUES ('gene_brca1_1', 'disease_breast_cancer_1', 'BRCA1', 
-        'a88b44a67c8d4b8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e', datetime('now'), datetime('now'));
+        'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2', datetime('now'), datetime('now'));
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
 VALUES ('gene_brca2_1', 'disease_breast_cancer_1', 'BRCA2', 
-        'b99c55b78d9e5c9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f', datetime('now'), datetime('now'));
+        'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3', datetime('now'), datetime('now'));
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
 VALUES ('gene_tp53_1', 'disease_breast_cancer_1', 'TP53', 
-        'c00d66c89e0f6d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a', datetime('now'), datetime('now'));
-INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_palb2_1', 'disease_breast_cancer_1', 'PALB2', 
-        'd11e77d90f1a7e1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b', datetime('now'), datetime('now'));
+        'c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4', datetime('now'), datetime('now'));
 
 
 -- Disease 2: Type 2 Diabetes
@@ -255,11 +267,11 @@ INSERT OR IGNORE INTO diseases (
     created_at,
     updated_at
 ) VALUES (
-    'disease_diabetes_t2_1',
+    'disease_diabetes_1',
     'hospital_test_1',
     'Type 2 Diabetes',
     'T2D-2024',
-    'Genetic risk factors for Type 2 Diabetes Mellitus',
+    'Genetic risk factors for type 2 diabetes mellitus',
     60.0,
     datetime('now'),
     datetime('now')
@@ -267,20 +279,17 @@ INSERT OR IGNORE INTO diseases (
 
 -- Disease 2 Genes
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_tcf7l2_1', 'disease_diabetes_t2_1', 'TCF7L2', 
-        'e22f88e01a2b8f2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c', datetime('now'), datetime('now'));
+VALUES ('gene_tcf7l2_1', 'disease_diabetes_1', 'TCF7L2', 
+        'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5', datetime('now'), datetime('now'));
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_fto_1', 'disease_diabetes_t2_1', 'FTO', 
-        'f33a99f12b3c9a3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d', datetime('now'), datetime('now'));
+VALUES ('gene_pparg_1', 'disease_diabetes_1', 'PPARG', 
+        'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6', datetime('now'), datetime('now'));
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_slc30a8_1', 'disease_diabetes_t2_1', 'SLC30A8', 
-        'a44b00a23c4d0b4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e', datetime('now'), datetime('now'));
+VALUES ('gene_fto_1', 'disease_diabetes_1', 'FTO', 
+        'f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7', datetime('now'), datetime('now'));
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_kcnj11_1', 'disease_diabetes_t2_1', 'KCNJ11', 
-        'b55c11b34d5e1c5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f', datetime('now'), datetime('now'));
-INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
-VALUES ('gene_pparg_1', 'disease_diabetes_t2_1', 'PPARG', 
-        'c66d22c45e6f2d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a', datetime('now'), datetime('now'));
+VALUES ('gene_kcnj11_1', 'disease_diabetes_1', 'KCNJ11', 
+        'a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8', datetime('now'), datetime('now'));
 
 
 -- Disease 3: Alzheimer's Disease

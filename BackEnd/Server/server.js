@@ -425,6 +425,95 @@ app.delete('/api/documents/:id', requireRole(['admin']), async (req, res) => {
   }
 });
 
+
+
+
+
+// ===================================
+// RESEARCHER ANALYTICS ENDPOINTS
+// ===================================
+// Add these endpoints to your server.js file
+
+// Get disease statistics for researchers (from consented users only)
+app.get('/api/researcher/disease-statistics', async (req, res) => {
+  try {
+    const { search } = req.query;
+    
+    let stats;
+    if (search && search.trim()) {
+      stats = await riskAssessmentService.searchDiseaseStatistics(search.trim());
+    } else {
+      stats = await riskAssessmentService.getDiseaseStatisticsForResearch();
+    }
+
+    return res.json({
+      success: true,
+      count: stats.length,
+      diseases: stats
+    });
+  } catch (err) {
+    console.error('Get disease statistics error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve disease statistics',
+      message: err.message
+    });
+  }
+});
+
+// Get detailed analytics for a specific disease (from consented users only)
+app.get('/api/researcher/disease-analytics/:diseaseId', async (req, res) => {
+  try {
+    const { diseaseId } = req.params;
+    
+    const analytics = await riskAssessmentService.getDiseaseAnalytics(diseaseId);
+    
+    if (!analytics) {
+      return res.status(404).json({
+        error: 'Disease not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      analytics
+    });
+  } catch (err) {
+    console.error('Get disease analytics error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve disease analytics',
+      message: err.message
+    });
+  }
+});
+
+// Get all assessments from consented users (for aggregate statistics)
+app.get('/api/researcher/consented-assessments', async (req, res) => {
+  try {
+    const assessments = await riskAssessmentService.getConsentedAssessments();
+
+    return res.json({
+      success: true,
+      count: assessments.length,
+      assessments
+    });
+  } catch (err) {
+    console.error('Get consented assessments error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve consented assessments',
+      message: err.message
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
 app.listen(PORT, () => {
   console.log(`PrivaGene DB service running on http://localhost:${PORT}`);
 });

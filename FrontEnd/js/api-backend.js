@@ -138,7 +138,6 @@ const BackendAPI = {
                 const error = await response.json();
                 throw new Error(error.message || 'Failed to update user status');
             }
-
             const data = await response.json();
             return data.user;
         } catch (error) {
@@ -932,7 +931,111 @@ const BackendAPI = {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+
+    // ===================================
+    // RESEARCHER ANALYTICS
+    // ===================================
+
+    /**
+     * Get disease statistics for researchers (from consented users only)
+     * @param {string} searchTerm - Optional search term
+     * @returns {Promise<Array>} Array of disease statistics
+     */
+    async getDiseaseStatistics(searchTerm = '') {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/researcher/disease-statistics`;
+            if (searchTerm && searchTerm.trim()) {
+                url += `?search=${encodeURIComponent(searchTerm.trim())}`;
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch disease statistics');
+            }
+
+            const data = await response.json();
+            return data.diseases || [];
+        } catch (error) {
+            console.error('Error fetching disease statistics:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get detailed analytics for a specific disease
+     * @param {string} diseaseId - Disease ID
+     * @returns {Promise<Object>} Disease analytics
+     */
+    async getDiseaseAnalytics(diseaseId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend disabled');
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/researcher/disease-analytics/${encodeURIComponent(diseaseId)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch disease analytics');
+            }
+
+            const data = await response.json();
+            return data.analytics;
+        } catch (error) {
+            console.error('Error fetching disease analytics:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all assessments from consented users
+     * @returns {Promise<Array>} Array of assessments
+     */
+    async getConsentedAssessments() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/researcher/consented-assessments`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch consented assessments');
+            }
+
+            const data = await response.json();
+            return data.assessments || [];
+        } catch (error) {
+            console.error('Error fetching consented assessments:', error);
+            return [];
+        }
     }
+
 };
 
 // Make it available as both BackendAPI and API for compatibility

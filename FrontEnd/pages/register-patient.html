@@ -197,7 +197,7 @@
                 UI.clearFormError(input);
             });
 
-            // Get values
+            // Get values - NOW INCLUDES researchConsent
             const formData = {
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
@@ -205,7 +205,8 @@
                 dateOfBirth: document.getElementById('dateOfBirth').value,
                 phone: document.getElementById('phone').value.trim(),
                 password: passwordInput.value,
-                role: 'patient'
+                role: 'patient',
+                researchConsent: document.getElementById('dataSharing').checked  // NEW: Capture consent checkbox
             };
 
             const confirmPassword = confirmPasswordInput.value;

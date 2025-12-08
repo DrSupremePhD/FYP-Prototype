@@ -22,39 +22,53 @@ async function createUser(userData) {
         specialty,
         institution,
         researchArea,
+        researchConsent = false,  // NEW: Default to false if not provided
         status = 'active'
     } = userData;
 
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    // Convert boolean to integer for SQLite (0 or 1)
+    const researchConsentInt = researchConsent ? 1 : 0;
+
     const sql = `
     INSERT INTO users (
       id, email, password, role, first_name, last_name, phone, date_of_birth,
       address, organization_name, organization_id, license_number, specialty,
-      institution, research_area, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      institution, research_area, research_consent, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
     await run(sql, [
         id, email, password, role, firstName, lastName, phone, dateOfBirth,
         address, organizationName, organizationId, licenseNumber, specialty,
-        institution, researchArea, status, now, now
+        institution, researchArea, researchConsentInt, status, now, now
     ]);
 
-    return { id, email, role, status, createdAt: now };
+    return { id, email, role, status, researchConsent: researchConsentInt === 1, createdAt: now };
 }
 
 // Find user by email
 async function getUserByEmail(email) {
     const sql = 'SELECT * FROM users WHERE email = ?';
-    return await get(sql, [email]);
+    const user = await get(sql, [email]);
+    if (user) {
+        // Convert research_consent from integer to boolean for consistency
+        user.research_consent = user.research_consent === 1;
+    }
+    return user;
 }
 
 // Find user by ID
 async function getUserById(id) {
     const sql = 'SELECT * FROM users WHERE id = ?';
-    return await get(sql, [id]);
+    const user = await get(sql, [id]);
+    if (user) {
+        // Convert research_consent from integer to boolean for consistency
+        user.research_consent = user.research_consent === 1;
+    }
+    return user;
 }
 
 // Update user
@@ -62,7 +76,7 @@ async function updateUser(id, updates) {
     const allowedFields = [
         'first_name', 'last_name', 'phone', 'date_of_birth', 'address',
         'organization_name', 'license_number', 'specialty', 'institution',
-        'research_area', 'status'
+        'research_area', 'research_consent', 'status'
     ];
 
     const fields = [];
@@ -72,7 +86,12 @@ async function updateUser(id, updates) {
         const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
         if (allowedFields.includes(snakeKey)) {
             fields.push(`${snakeKey} = ?`);
-            values.push(updates[key]);
+            // Handle boolean to integer conversion for research_consent
+            if (snakeKey === 'research_consent') {
+                values.push(updates[key] ? 1 : 0);
+            } else {
+                values.push(updates[key]);
+            }
         }
     });
 
@@ -112,7 +131,30 @@ async function getUsers(filters = {}) {
         params.push(filters.status);
     }
 
-    return await all(sql, params);
+    // NEW: Filter by research consent
+    if (filters.researchConsent !== undefined) {
+        sql += ' AND research_consent = ?';
+        params.push(filters.researchConsent ? 1 : 0);
+    }
+
+    const users = await all(sql, params);
+    
+    // Convert research_consent from integer to boolean for all users
+    return users.map(user => ({
+        ...user,
+        research_consent: user.research_consent === 1
+    }));
+}
+
+// NEW: Get users who have consented to research data sharing
+async function getConsentedUsers() {
+    const sql = 'SELECT * FROM users WHERE research_consent = 1 AND role = ?';
+    const users = await all(sql, ['patient']);
+    
+    return users.map(user => ({
+        ...user,
+        research_consent: true
+    }));
 }
 
 // Change password
@@ -129,6 +171,13 @@ async function updateUserStatus(id, status) {
     return await getUserById(id);
 }
 
+// NEW: Update research consent preference
+async function updateResearchConsent(id, consent) {
+    const sql = 'UPDATE users SET research_consent = ?, updated_at = ? WHERE id = ?';
+    await run(sql, [consent ? 1 : 0, new Date().toISOString(), id]);
+    return await getUserById(id);
+}
+
 module.exports = {
     createUser,
     getUserByEmail,
@@ -136,6 +185,8 @@ module.exports = {
     updateUser,
     deleteUser,
     getUsers,
+    getConsentedUsers,  // NEW export
     changePassword,
-    updateUserStatus
+    updateUserStatus,
+    updateResearchConsent  // NEW export
 };
