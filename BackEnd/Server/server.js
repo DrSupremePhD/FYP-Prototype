@@ -57,6 +57,9 @@ app.get('/api/health', (req, res) => {
 
 // Register new user
 app.post('/api/users/register', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
     const { email, password, role } = req.body;
 
@@ -89,6 +92,26 @@ app.post('/api/users/register', async (req, res) => {
 
     const user = await userService.createUser(userData);
 
+    // Log user registration
+    await auditService.createLog({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'user_registered',
+      resourceType: 'user',
+      resourceId: user.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { 
+        accountStatus: status,
+        message: status === 'pending_approval' 
+          ? 'New user registered (pending approval)' 
+          : 'New user registered'
+      }
+    });
+
     return res.status(201).json({
       success: true,
       user: {
@@ -112,6 +135,9 @@ app.post('/api/users/register', async (req, res) => {
 
 // Login user
 app.post('/api/users/login', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
     const { email, password } = req.body;
 
@@ -125,6 +151,16 @@ app.post('/api/users/login', async (req, res) => {
     const user = await userService.getUserByEmail(email);
 
     if (!user) {
+      // Log failed login - user not found
+      await auditService.createLog({
+        userEmail: email,
+        action: 'login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'User not found' }
+      });
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Email or password incorrect'
@@ -133,6 +169,18 @@ app.post('/api/users/login', async (req, res) => {
 
     // Simple password comparison (NOTE: In production, use bcrypt!)
     if (user.password !== password) {
+      // Log failed login - wrong password
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Invalid password' }
+      });
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Email or password incorrect'
@@ -141,6 +189,18 @@ app.post('/api/users/login', async (req, res) => {
 
     // Check if user is approved
     if (user.status === 'pending_approval') {
+      // Log failed login - pending approval
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'login',
+        status: 'failure',
+        severity: 'info',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Account pending approval' }
+      });
       return res.status(403).json({
         error: 'Account pending approval',
         message: 'Your account is awaiting admin approval'
@@ -148,11 +208,36 @@ app.post('/api/users/login', async (req, res) => {
     }
 
     if (user.status !== 'active') {
+      // Log failed login - account inactive
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Account inactive/suspended' }
+      });
       return res.status(403).json({
         error: 'Account inactive',
         message: 'Your account has been deactivated'
       });
     }
+
+    // Log successful login
+    await auditService.createLog({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'login',
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { message: 'User logged in successfully' }
+    });
 
     // Return user data (excluding password)
     const { password: _, ...userData } = user;
@@ -223,8 +308,34 @@ app.put('/api/users/:id', async (req, res) => {
 
 // Delete user account
 app.delete('/api/users/:id', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
+    // Get user info before deleting for logging
+    const userToDelete = await userService.getUserById(req.params.id);
+    
     await userService.deleteUser(req.params.id);
+
+    // Log user deletion
+    if (userToDelete) {
+      await auditService.createLog({
+        userEmail: userToDelete.email,
+        userRole: userToDelete.role,
+        action: 'user_deleted',
+        resourceType: 'user',
+        resourceId: req.params.id,
+        status: 'success',
+        severity: 'critical',
+        ipAddress,
+        userAgent,
+        details: { 
+          deletedUserEmail: userToDelete.email,
+          deletedUserRole: userToDelete.role,
+          message: 'User account deleted'
+        }
+      });
+    }
 
     return res.json({
       success: true,
@@ -267,6 +378,10 @@ app.get('/api/users', async (req, res) => {
 
 // Update user status (for admin approval)
 app.patch('/api/users/:id/status', requireRole(['admin', 'system_admin']), async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const adminRole = req.context?.originalRole || 'system_admin';
+  
   try {
     const { status } = req.body;
 
@@ -276,6 +391,8 @@ app.patch('/api/users/:id/status', requireRole(['admin', 'system_admin']), async
       });
     }
 
+    // Get user before update to know previous status
+    const userBefore = await userService.getUserById(req.params.id);
     const user = await userService.updateUserStatus(req.params.id, status);
 
     if (!user) {
@@ -283,6 +400,37 @@ app.patch('/api/users/:id/status', requireRole(['admin', 'system_admin']), async
         error: 'User not found'
       });
     }
+
+    // Determine action type based on status change
+    let action = 'user_status_updated';
+    let severity = 'info';
+    if (status === 'active' && userBefore?.status === 'pending_approval') {
+      action = 'user_approved';
+    } else if (status === 'suspended') {
+      action = 'user_suspended';
+      severity = 'warning';
+    } else if (status === 'active' && userBefore?.status === 'suspended') {
+      action = 'user_activated';
+    }
+
+    // Log user status change
+    await auditService.createLog({
+      userRole: adminRole,
+      action,
+      resourceType: 'user',
+      resourceId: req.params.id,
+      status: 'success',
+      severity,
+      ipAddress,
+      userAgent,
+      details: { 
+        targetUserEmail: user.email,
+        targetUserRole: user.role,
+        previousStatus: userBefore?.status,
+        newStatus: status,
+        message: `User status changed to ${status}`
+      }
+    });
 
     const { password: _, ...userData } = user;
     return res.json({
@@ -308,6 +456,9 @@ app.patch('/api/users/:id/status', requireRole(['admin', 'system_admin']), async
 // Upload result (patient or researcher uploads analysis files)
 // Required headers: X-Role (must be 'patient' or 'researcher' or 'doctor'), X-Session-ID (session linkage)
 app.post('/api/documents/upload', requireRole(['patient', 'researcher', 'doctor', 'admin']), upload.single('file'), async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -325,6 +476,26 @@ app.post('/api/documents/upload', requireRole(['patient', 'researcher', 'doctor'
     }
 
     const result = await documentService.storeFileFromBuffer(req.file.buffer, req.file.originalname, req.file.mimetype, sessionId);
+    
+    // Log document upload (gene file upload)
+    await auditService.createLog({
+      userRole: req.context.originalRole || req.context.role,
+      action: 'upload_gene',
+      resourceType: 'document',
+      resourceId: result.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      sessionId,
+      details: { 
+        fileName: result.fileName,
+        fileSize: result.size,
+        fileType: req.file.mimetype,
+        message: 'Gene file uploaded successfully'
+      }
+    });
+    
     return res.json({
       success: true,
       id: result.id,
@@ -687,6 +858,9 @@ app.post('/api/psi/calculate-risk', async (req, res) => {
 
 // Create (store) risk assessment results
 app.post('/api/risk-assessments', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
     const { userId, overallRisk, diseaseId, matchCount, matchedGenes, riskPercentage } = req.body;
 
@@ -696,6 +870,9 @@ app.post('/api/risk-assessments', async (req, res) => {
         required: ['userId', 'overallRisk']
       });
     }
+
+    // Get user info for logging
+    const user = await userService.getUserById(userId);
 
     // Store in database using service
     const assessment = await riskAssessmentService.createAssessment({
@@ -708,6 +885,26 @@ app.post('/api/risk-assessments', async (req, res) => {
     });
 
     console.log('Risk assessment stored in database:', assessment.id);
+
+    // Log risk computation
+    await auditService.createLog({
+      userId,
+      userEmail: user?.email,
+      userRole: user?.role || 'patient',
+      action: 'compute_risk',
+      resourceType: 'risk_assessment',
+      resourceId: assessment.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { 
+        diseaseId, 
+        riskPercentage: riskPercentage || overallRisk,
+        matchCount: matchCount || 0,
+        message: 'Risk assessment computed and stored'
+      }
+    });
 
     return res.status(201).json({
       success: true,
@@ -988,6 +1185,31 @@ app.post('/api/diseases', async (req, res) => {
       constant: constantNum
     });
 
+    // Get hospital user info for logging
+    const hospitalUser = await userService.getUserById(hospital_id);
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    // Log disease creation
+    await auditService.createLog({
+      userId: hospital_id,
+      userEmail: hospitalUser?.email,
+      userRole: 'hospital',
+      action: 'create_disease',
+      resourceType: 'disease',
+      resourceId: disease.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { 
+        diseaseName: disease_name,
+        diseaseCode: disease_code,
+        geneCount: geneSymbolsArray.length,
+        message: 'Disease record created'
+      }
+    });
+
     return res.status(201).json({
       success: true,
       disease,
@@ -1004,7 +1226,13 @@ app.post('/api/diseases', async (req, res) => {
 
 // Update a disease
 app.put('/api/diseases/:id', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
+    // Get existing disease first for logging
+    const existingDisease = await diseaseService.getDiseaseById(req.params.id);
+    
     const disease = await diseaseService.updateDisease(req.params.id, req.body);
 
     if (!disease) {
@@ -1012,6 +1240,27 @@ app.put('/api/diseases/:id', async (req, res) => {
         error: 'Disease not found'
       });
     }
+
+    // Get hospital user info for logging
+    const hospitalUser = existingDisease ? await userService.getUserById(existingDisease.hospital_id) : null;
+
+    // Log disease update
+    await auditService.createLog({
+      userId: existingDisease?.hospital_id,
+      userEmail: hospitalUser?.email,
+      userRole: 'hospital',
+      action: 'update_disease',
+      resourceType: 'disease',
+      resourceId: req.params.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { 
+        diseaseName: disease.disease_name,
+        message: 'Disease record updated'
+      }
+    });
 
     return res.json({
       success: true,
@@ -1030,7 +1279,14 @@ app.put('/api/diseases/:id', async (req, res) => {
 
 // Delete a disease
 app.delete('/api/diseases/:id', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
   try {
+    // Get disease info before deleting for logging
+    const disease = await diseaseService.getDiseaseById(req.params.id);
+    const hospitalUser = disease ? await userService.getUserById(disease.hospital_id) : null;
+    
     const deleted = await diseaseService.deleteDisease(req.params.id);
 
     if (!deleted) {
@@ -1038,6 +1294,25 @@ app.delete('/api/diseases/:id', async (req, res) => {
         error: 'Disease not found'
       });
     }
+
+    // Log disease deletion
+    await auditService.createLog({
+      userId: disease?.hospital_id,
+      userEmail: hospitalUser?.email,
+      userRole: 'hospital',
+      action: 'delete_disease',
+      resourceType: 'disease',
+      resourceId: req.params.id,
+      status: 'success',
+      severity: 'warning',
+      ipAddress,
+      userAgent,
+      details: { 
+        diseaseName: disease?.disease_name,
+        diseaseCode: disease?.disease_code,
+        message: 'Disease record deleted'
+      }
+    });
 
     return res.json({
       success: true,
@@ -1189,3 +1464,173 @@ function parseCSVLine(line) {
   result.push(current.trim());
   return result;
 }
+
+
+// ===================================
+// AUDIT LOG ENDPOINTS
+// ===================================
+
+const auditService = require('./services/auditService');
+
+// Get audit logs with filters (system_admin only)
+app.get('/api/audit-logs', requireRole(['admin']), async (req, res) => {
+  try {
+    const filters = {
+      userEmail: req.query.userEmail || req.query.user_email,
+      userId: req.query.userId || req.query.user_id,
+      userRole: req.query.userRole || req.query.user_role,
+      action: req.query.action,
+      resourceType: req.query.resourceType || req.query.resource_type,
+      status: req.query.status,
+      severity: req.query.severity,
+      startDate: req.query.startDate || req.query.start_date,
+      endDate: req.query.endDate || req.query.end_date,
+      limit: parseInt(req.query.limit) || 100,
+      offset: parseInt(req.query.offset) || 0
+    };
+
+    // Remove undefined/null filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null || filters[key] === '') {
+        delete filters[key];
+      }
+    });
+
+    const logs = await auditService.getLogs(filters);
+    const totalCount = await auditService.getLogsCount(filters);
+
+    return res.json({
+      success: true,
+      count: logs.length,
+      total: totalCount,
+      logs
+    });
+  } catch (err) {
+    console.error('Get audit logs error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve audit logs',
+      message: err.message
+    });
+  }
+});
+
+// Get audit log statistics (system_admin only)
+app.get('/api/audit-logs/statistics', requireRole(['admin']), async (req, res) => {
+  try {
+    const stats = await auditService.getStatistics();
+
+    return res.json({
+      success: true,
+      statistics: stats
+    });
+  } catch (err) {
+    console.error('Get audit statistics error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve audit statistics',
+      message: err.message
+    });
+  }
+});
+
+// Get audit logs for a specific user (system_admin only)
+app.get('/api/audit-logs/user/:userId', requireRole(['admin']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const logs = await auditService.getLogsByUser(userId, limit);
+
+    return res.json({
+      success: true,
+      count: logs.length,
+      logs
+    });
+  } catch (err) {
+    console.error('Get user audit logs error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve user audit logs',
+      message: err.message
+    });
+  }
+});
+
+// Get audit logs for a specific resource (system_admin only)
+app.get('/api/audit-logs/resource/:resourceType/:resourceId', requireRole(['admin']), async (req, res) => {
+  try {
+    const { resourceType, resourceId } = req.params;
+
+    const logs = await auditService.getLogsByResource(resourceType, resourceId);
+
+    return res.json({
+      success: true,
+      count: logs.length,
+      logs
+    });
+  } catch (err) {
+    console.error('Get resource audit logs error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve resource audit logs',
+      message: err.message
+    });
+  }
+});
+
+// Create audit log entry (internal use, but exposed for flexibility)
+app.post('/api/audit-logs', async (req, res) => {
+  try {
+    const logData = {
+      userId: req.body.userId || req.body.user_id,
+      userEmail: req.body.userEmail || req.body.user_email,
+      userRole: req.body.userRole || req.body.user_role,
+      action: req.body.action,
+      resourceType: req.body.resourceType || req.body.resource_type,
+      resourceId: req.body.resourceId || req.body.resource_id,
+      ipAddress: req.body.ipAddress || req.body.ip_address || req.ip || req.headers['x-forwarded-for'],
+      userAgent: req.body.userAgent || req.body.user_agent || req.headers['user-agent'],
+      status: req.body.status || 'success',
+      severity: req.body.severity || 'info',
+      details: req.body.details,
+      sessionId: req.body.sessionId || req.body.session_id
+    };
+
+    if (!logData.action) {
+      return res.status(400).json({
+        error: 'Missing required field: action'
+      });
+    }
+
+    const log = await auditService.createLog(logData);
+
+    return res.status(201).json({
+      success: true,
+      log
+    });
+  } catch (err) {
+    console.error('Create audit log error:', err);
+    return res.status(500).json({
+      error: 'Failed to create audit log',
+      message: err.message
+    });
+  }
+});
+
+// Delete old audit logs (system_admin only, for retention policy)
+app.delete('/api/audit-logs/cleanup', requireRole(['admin']), async (req, res) => {
+  try {
+    const daysToKeep = parseInt(req.query.days) || 90;
+
+    const deletedCount = await auditService.deleteOldLogs(daysToKeep);
+
+    return res.json({
+      success: true,
+      message: `Deleted ${deletedCount} audit logs older than ${daysToKeep} days`,
+      deletedCount
+    });
+  } catch (err) {
+    console.error('Cleanup audit logs error:', err);
+    return res.status(500).json({
+      error: 'Failed to cleanup audit logs',
+      message: err.message
+    });
+  }
+});

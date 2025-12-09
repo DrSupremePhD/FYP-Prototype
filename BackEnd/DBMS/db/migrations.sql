@@ -628,3 +628,36 @@ VALUES ('gene_tp53_3', 'disease_colorectal_1', 'TP53',
 INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
 VALUES ('gene_smad4_1', 'disease_colorectal_1', 'SMAD4', 
         'c99d55c78e9f5d9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a', datetime('now'), datetime('now'));
+
+
+-- ===================================
+-- Audit Logs Table
+-- ===================================
+-- audit_logs table: stores all system activity for security and compliance
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  timestamp TEXT NOT NULL,
+  user_id TEXT,
+  user_email TEXT,
+  user_role TEXT,
+  action TEXT NOT NULL,
+  resource_type TEXT,
+  resource_id TEXT,
+  ip_address TEXT,
+  user_agent TEXT,
+  status TEXT DEFAULT 'success',
+  severity TEXT DEFAULT 'info',
+  details TEXT,
+  session_id TEXT,
+  created_at TEXT NOT NULL,
+  
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Indexes for common audit log queries
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_status ON audit_logs(status);
+CREATE INDEX IF NOT EXISTS idx_audit_severity ON audit_logs(severity);
+CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_logs(resource_type, resource_id);

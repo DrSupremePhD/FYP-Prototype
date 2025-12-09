@@ -12,9 +12,11 @@ const BackendAPI = {
 
     // Helper to get current user info
     getCurrentUser() {
-        const currentUser = Storage.getCurrentUser();
+        // Use Auth.getCurrentUser() which reads from sessionStorage
+        const currentUser = Auth.getCurrentUser();
         if (!currentUser) {
-            throw new Error('No user logged in');
+            console.warn('No user logged in');
+            return null;
         }
         return currentUser;
     },
@@ -126,10 +128,12 @@ const BackendAPI = {
         }
 
         try {
+            const user = this.getCurrentUser();
             const response = await fetch(`${this.config.baseURL}/api/users/${userId}/status`, {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
                 },
                 body: JSON.stringify({ status })
             });
@@ -1068,6 +1072,215 @@ const BackendAPI = {
         } catch (error) {
             console.error('Error fetching consented assessments:', error);
             return [];
+        }
+    },
+
+    // ===================================
+    // AUDIT LOG FUNCTIONS
+    // ===================================
+
+    /**
+     * Get audit logs with optional filters (system_admin only)
+     * @param {Object} filters - Filter options
+     * @returns {Promise<Array>} Array of audit logs
+     */
+    async getAuditLogs(filters = {}) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty logs');
+            return [];
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/audit-logs`;
+            const params = new URLSearchParams();
+
+            if (filters.userEmail) params.append('userEmail', filters.userEmail);
+            if (filters.userId) params.append('userId', filters.userId);
+            if (filters.userRole) params.append('userRole', filters.userRole);
+            if (filters.action) params.append('action', filters.action);
+            if (filters.resourceType) params.append('resourceType', filters.resourceType);
+            if (filters.status) params.append('status', filters.status);
+            if (filters.severity) params.append('severity', filters.severity);
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+            if (filters.limit) params.append('limit', filters.limit);
+            if (filters.offset) params.append('offset', filters.offset);
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            const user = this.getCurrentUser();
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Audit logs API error:', errorData);
+                throw new Error(errorData.error || 'Failed to fetch audit logs');
+            }
+
+            const data = await response.json();
+            
+            // Map snake_case from backend to camelCase for frontend
+            const logs = (data.logs || []).map(log => ({
+                id: log.id,
+                timestamp: log.timestamp,
+                userId: log.user_id,
+                userEmail: log.user_email,
+                userRole: log.user_role,
+                action: log.action,
+                resourceType: log.resource_type,
+                resourceId: log.resource_id,
+                ipAddress: log.ip_address,
+                userAgent: log.user_agent,
+                status: log.status,
+                severity: log.severity,
+                details: typeof log.details === 'object' ? JSON.stringify(log.details) : log.details,
+                sessionId: log.session_id,
+                createdAt: log.created_at
+            }));
+            
+            return logs;
+        } catch (error) {
+            console.error('Error fetching audit logs:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get audit log statistics (system_admin only)
+     * @returns {Promise<Object>} Statistics object
+     */
+    async getAuditStatistics() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return null;
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/audit-logs/statistics`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': this.getCurrentUser()?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch audit statistics');
+            }
+
+            const data = await response.json();
+            return data.statistics;
+        } catch (error) {
+            console.error('Error fetching audit statistics:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Create an audit log entry
+     * @param {Object} logData - Log data
+     * @returns {Promise<Object>} Created log
+     */
+    async createAuditLog(logData) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, skipping audit log');
+            return null;
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/audit-logs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(logData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create audit log');
+            }
+
+            const data = await response.json();
+            return data.log;
+        } catch (error) {
+            console.error('Error creating audit log:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Get audit logs for a specific user
+     * @param {string} userId - User ID
+     * @param {number} limit - Maximum number of logs
+     * @returns {Promise<Array>} Array of audit logs
+     */
+    async getAuditLogsByUser(userId, limit = 50) {
+        if (!this.config.enabled) {
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/audit-logs/user/${encodeURIComponent(userId)}?limit=${limit}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Role': this.getCurrentUser()?.role || 'system_admin'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch user audit logs');
+            }
+
+            const data = await response.json();
+            return data.logs || [];
+        } catch (error) {
+            console.error('Error fetching user audit logs:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Delete old audit logs (retention policy)
+     * @param {number} daysToKeep - Number of days to retain
+     * @returns {Promise<Object>} Deletion result
+     */
+    async cleanupAuditLogs(daysToKeep = 90) {
+        if (!this.config.enabled) {
+            return { success: false };
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/audit-logs/cleanup?days=${daysToKeep}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Role': this.getCurrentUser()?.role || 'system_admin'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to cleanup audit logs');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error cleaning up audit logs:', error);
+            return { success: false, error: error.message };
         }
     }
 
