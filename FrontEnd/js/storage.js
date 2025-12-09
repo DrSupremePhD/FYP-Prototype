@@ -7,6 +7,7 @@
 // LocalStorage wrapper for mock database
 // ===================================
 
+/*
 const Storage = {
     // Initialize default data structure
     init() {
@@ -334,3 +335,5 @@ Storage.init();
 
 // Export for use in other scripts
 window.Storage = Storage;
+
+*/

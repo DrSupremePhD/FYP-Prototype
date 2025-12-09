@@ -85,7 +85,8 @@ INSERT OR IGNORE INTO users (
     password, 
     role, 
     first_name, 
-    last_name, 
+    last_name,
+    date_of_birth,
     status,
     research_consent,
     created_at,
@@ -97,6 +98,87 @@ INSERT OR IGNORE INTO users (
     'patient',
     'Test',
     'Patient',
+    '1989-09-23',
+    'active',
+    1,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name,
+    date_of_birth,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'patient_test_2',
+    'john.doe@email.com',
+    'patient123',
+    'patient',
+    'John',
+    'Doe',
+    '2004-02-10',
+    'active',
+    1,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name,
+    date_of_birth,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'patient_test_3',
+    'jane.smith@email.com',
+    'patient123',
+    'patient',
+    'Jane',
+    'Smith',
+    '1995-12-03',
+    'active',
+    1,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name,
+    date_of_birth,
+    phone,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'patient_test_4',
+    'mike.wong@email.com',
+    'patient123',
+    'patient',
+    'Mike',
+    'Wong',
+    '1985-09-23',
+    '99995555',
     'active',
     1,
     datetime('now'),
@@ -126,6 +208,34 @@ INSERT OR IGNORE INTO users (
     'Hospital',
     'City General Hospital',
     'LIC123456',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name, 
+    organization_name,
+    license_number,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'hospital_test_2',
+    'dr.chen@sgh.com.sg',
+    'hospital123',
+    'hospital',
+    'Test',
+    'Hospital',
+    'Singapore General Hospital',
+    'LIC654321',
     'active',
     0,
     datetime('now'),

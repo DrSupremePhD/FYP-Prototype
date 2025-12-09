@@ -239,7 +239,8 @@ const riskAssessmentService = {
         ra.match_count as matchCount,
         ra.matched_genes as matchedGenes,
         ra.risk_percentage as riskPercentage,
-        ra.created_at as createdAt
+        ra.created_at as createdAt,
+        u.date_of_birth as dateOfBirth
       FROM risk_assessments ra
       INNER JOIN users u ON ra.user_id = u.id
       WHERE ra.disease_id = ?
@@ -303,7 +304,8 @@ const riskAssessmentService = {
         riskPercentage: a.riskPercentage,
         matchCount: a.matchCount,
         matchedGenes: JSON.parse(a.matchedGenes || '[]'),
-        createdAt: a.createdAt
+        createdAt: a.createdAt,
+        dateOfBirth: a.dateOfBirth
       }))
     };
   },
@@ -347,7 +349,50 @@ const riskAssessmentService = {
       hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
       avgRiskPercentage: s.avgRiskPercentage ? Math.round(s.avgRiskPercentage * 10) / 10 : null
     }));
+  },
+
+  /**
+   * Get recent assessments for researcher dashboard (from consented users only)
+   * Includes disease name, hospital name, age, risk level, date
+   * @param {number} limit - Number of assessments to return
+   * @returns {Promise<Array>} Array of recent assessments
+   */
+  async getRecentAssessmentsForResearcher(limit = 6) {
+    const assessments = await all(`
+      SELECT 
+        ra.id,
+        ra.risk_percentage as riskPercentage,
+        ra.match_count as matchCount,
+        ra.created_at as createdAt,
+        u.date_of_birth as dateOfBirth,
+        d.disease_name as diseaseName,
+        d.disease_code as diseaseCode,
+        h.organization_name as hospitalName,
+        h.first_name as hospitalFirstName,
+        h.last_name as hospitalLastName
+      FROM risk_assessments ra
+      INNER JOIN users u ON ra.user_id = u.id
+      LEFT JOIN diseases d ON ra.disease_id = d.id
+      LEFT JOIN users h ON d.hospital_id = h.id
+      WHERE u.research_consent = 1
+      ORDER BY ra.created_at DESC
+      LIMIT ?
+    `, [limit]);
+
+    return assessments.map(a => ({
+      id: a.id,
+      riskPercentage: a.riskPercentage,
+      matchCount: a.matchCount,
+      createdAt: a.createdAt,
+      dateOfBirth: a.dateOfBirth,
+      diseaseName: a.diseaseName || 'Unknown Disease',
+      diseaseCode: a.diseaseCode,
+      hospitalName: a.hospitalName || 
+        `${a.hospitalFirstName || ''} ${a.hospitalLastName || ''}`.trim() || 
+        'Unknown Hospital'
+    }));
   }
+
 };
 
 module.exports = riskAssessmentService;

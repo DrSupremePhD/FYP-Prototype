@@ -130,7 +130,9 @@ class GeneManager {
             }
             
             if (this.useBackend) {
-                // Use backend API
+                
+
+                // Use backend API  
                 const entryData = {
                     hospital_id: this.user.id,
                     disease_name: data.disease_name,
@@ -139,7 +141,8 @@ class GeneManager {
                     description: data.description || '',
                     constant: parseFloat(data.constant)
                 };
-
+                
+                
                 console.log('Sending to backend:', entryData);
                 
                 const result = await BackendAPI.createDisease(entryData);

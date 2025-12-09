@@ -205,6 +205,30 @@ const diseaseService = {
   },
 
   /**
+   * Get all diseases with hospital names (for patient disease selection)
+   * @returns {Promise<Array>} - Array of all diseases with hospital info
+   */
+  async getAllDiseasesWithHospitalNames() {
+      const sql = `
+          SELECT d.*, u.organization_name as hospital_name, 
+                u.first_name as hospital_first_name, 
+                u.last_name as hospital_last_name
+          FROM diseases d
+          LEFT JOIN users u ON d.hospital_id = u.id
+          ORDER BY d.created_at DESC
+      `;
+      const diseases = await all(sql);
+      
+      // Use organization_name, or fall back to first_name + last_name
+      return diseases.map(d => ({
+          ...d,
+          hospital_name: d.hospital_name || 
+              `${d.hospital_first_name || ''} ${d.hospital_last_name || ''}`.trim() || 
+              'Unknown Hospital'
+      }));
+  },
+
+  /**
    * Update a disease (metadata only)
    * @param {string} id - Disease ID
    * @param {Object} data - Updated data

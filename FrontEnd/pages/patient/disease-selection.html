@@ -128,8 +128,9 @@
                 // Fetch disease categories from backend database
                 // Note: This does NOT return gene symbols (privacy by design)
                 const categories = await API.getDiseaseCategories();
+                console.log('Categories received:', categories);  // Add this line
                 const container = document.getElementById('categories-list');
-
+                
                 categoriesList = categories;
 
                 if (categories.length === 0) {
@@ -151,7 +152,7 @@
                             <div class="text-secondary text-sm">${category.description || 'No description available'}</div>
                             <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
                                 <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                                    🏥 Provider: ${category.hospitalId || 'Unknown'}
+                                    🏥 Provider: ${category.hospitalName || 'Unknown'}
                                 </span>
                                 ${category.diseaseCode ? `
                                 <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">

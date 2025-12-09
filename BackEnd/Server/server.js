@@ -486,6 +486,26 @@ app.get('/api/researcher/disease-analytics/:diseaseId', async (req, res) => {
   }
 });
 
+// Get recent assessments for researcher dashboard
+app.get('/api/researcher/recent-assessments', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    const assessments = await riskAssessmentService.getRecentAssessmentsForResearcher(limit);
+
+    return res.json({
+      success: true,
+      count: assessments.length,
+      assessments
+    });
+  } catch (err) {
+    console.error('Get recent assessments error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve recent assessments',
+      message: err.message
+    });
+  }
+});
+
 // Get all assessments from consented users (for aggregate statistics)
 app.get('/api/researcher/consented-assessments', async (req, res) => {
   try {
@@ -505,33 +525,19 @@ app.get('/api/researcher/consented-assessments', async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
-
 app.listen(PORT, () => {
   console.log(`PrivaGene DB service running on http://localhost:${PORT}`);
 });
-
-
-
 
 // ===================================
 // DISEASE CATEGORY ENDPOINTS
 // ===================================
 
-// NEW VERSION OF DISEASE CATEGORIES ENDPOINT - compared to above
-// GET /api/disease-categories - Public endpoint for patients to see available diseases
 // Returns disease info WITHOUT gene symbols for privacy
 app.get('/api/disease-categories', async (req, res) => {
     try {
-        // Get all diseases from database
-        const diseases = await diseaseService.getAllDiseases();
+        // Get all diseases from database with hospital names
+        const diseases = await diseaseService.getAllDiseasesWithHospitalNames();
         
         // Strip out sensitive gene information before sending to frontend
         const safeCategories = diseases.map(disease => ({
@@ -539,9 +545,9 @@ app.get('/api/disease-categories', async (req, res) => {
             name: disease.disease_name,
             description: disease.description || '',
             hospitalId: disease.hospital_id,
+            hospitalName: disease.hospital_name || 'Unknown Hospital',
             diseaseCode: disease.disease_code,
             createdAt: disease.created_at
-            // gene_symbols and gene_details are intentionally excluded
         }));
         
         res.json(safeCategories);
@@ -1014,6 +1020,7 @@ app.put('/api/diseases/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Update disease error:', err);
+    console.error('Error stack:', err.stack);
     return res.status(500).json({
       error: 'Failed to update disease',
       message: err.message

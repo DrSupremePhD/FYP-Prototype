@@ -267,6 +267,7 @@ const BackendAPI = {
                 name: cat.disease_name || cat.name,
                 description: cat.description || '',
                 hospitalId: cat.hospital_id || cat.hospitalId,
+                hospitalName: cat.hospital_name || cat.hospitalName,
                 diseaseCode: cat.disease_code || cat.diseaseCode
                 // NOTE: gene_symbols are intentionally NOT included for privacy
             }));
@@ -1003,6 +1004,40 @@ const BackendAPI = {
         } catch (error) {
             console.error('Error fetching disease analytics:', error);
             throw error;
+        }
+    },
+
+    /**
+     * Get recent assessments for researcher dashboard
+     * @param {number} limit - Number of assessments to fetch
+     * @returns {Promise<Array>} Array of recent assessments
+     */
+    async getRecentAssessmentsForResearcher(limit = 6) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/researcher/recent-assessments?limit=${limit}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch recent assessments');
+            }
+
+            const data = await response.json();
+            return data.assessments || [];
+        } catch (error) {
+            console.error('Error fetching recent assessments:', error);
+            return [];
         }
     },
 
