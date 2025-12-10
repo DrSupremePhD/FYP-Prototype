@@ -661,3 +661,125 @@ CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_status ON audit_logs(status);
 CREATE INDEX IF NOT EXISTS idx_audit_severity ON audit_logs(severity);
 CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_logs(resource_type, resource_id);
+
+
+-- ===================================
+-- SEED RISK ASSESSMENTS
+-- 30 past PSI risk assessments over the past 6 months (July 2025 - December 2025)
+-- Distributed across the 4 seeded patients
+-- ===================================
+
+-- Patient 1: patient_test_1 (Test Patient) - 8 assessments
+-- July 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_001', 'patient_test_1', 50.0, 'disease_breast_cancer_1', 2, '["BRCA1","TP53"]', 50.0, '2025-07-05T10:30:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_002', 'patient_test_1', 45.0, 'disease_diabetes_1', 3, '["TCF7L2","FTO","KCNJ11"]', 45.0, '2025-07-05T10:30:15.000Z');
+
+-- August 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_003', 'patient_test_1', 40.0, 'disease_alzheimers_1', 2, '["APOE","PSEN1"]', 40.0, '2025-08-12T14:20:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_004', 'patient_test_1', 26.0, 'disease_cardiovascular_1', 2, '["MTHFR","LDLR"]', 26.0, '2025-08-12T14:20:30.000Z');
+
+-- October 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_005', 'patient_test_1', 14.0, 'disease_lung_cancer_1', 1, '["TP53"]', 14.0, '2025-10-03T09:15:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_006', 'patient_test_1', 20.0, 'disease_obesity_1', 2, '["FTO","MC4R"]', 20.0, '2025-10-03T09:15:45.000Z');
+
+-- November 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_007', 'patient_test_1', 28.8, 'disease_colorectal_1', 2, '["APC","TP53"]', 28.8, '2025-11-18T16:45:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_008', 'patient_test_1', 27.5, 'disease_inflammatory_1', 2, '["TNF","IL6"]', 27.5, '2025-11-18T16:45:30.000Z');
+
+
+-- Patient 2: patient_test_2 (John Doe) - 8 assessments
+-- July 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_009', 'patient_test_2', 75.0, 'disease_breast_cancer_1', 3, '["BRCA1","BRCA2","TP53"]', 75.0, '2025-07-20T11:00:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_010', 'patient_test_2', 60.0, 'disease_diabetes_1', 4, '["TCF7L2","PPARG","FTO","KCNJ11"]', 60.0, '2025-07-20T11:00:20.000Z');
+
+-- August 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_011', 'patient_test_2', 60.0, 'disease_alzheimers_1', 3, '["APOE","PSEN1","APP"]', 60.0, '2025-08-25T13:30:00.000Z');
+
+-- September 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_012', 'patient_test_2', 39.0, 'disease_cardiovascular_1', 3, '["APOE","ACE","PCSK9"]', 39.0, '2025-09-10T10:45:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_013', 'patient_test_2', 28.0, 'disease_lung_cancer_1', 2, '["EGFR","KRAS"]', 28.0, '2025-09-10T10:45:30.000Z');
+
+-- October 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_014', 'patient_test_2', 30.0, 'disease_obesity_1', 3, '["FTO","MC4R","LEPR"]', 30.0, '2025-10-22T15:20:00.000Z');
+
+-- November 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_015', 'patient_test_2', 43.2, 'disease_colorectal_1', 3, '["APC","MLH1","TP53"]', 43.2, '2025-11-05T08:30:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_016', 'patient_test_2', 41.25, 'disease_inflammatory_1', 3, '["TNF","IL6","CRP"]', 41.25, '2025-11-05T08:30:45.000Z');
+
+
+-- Patient 3: patient_test_3 (Jane Smith) - 7 assessments
+-- July 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_017', 'patient_test_3', 25.0, 'disease_breast_cancer_1', 1, '["BRCA2"]', 25.0, '2025-07-15T09:00:00.000Z');
+
+-- August 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_018', 'patient_test_3', 30.0, 'disease_diabetes_1', 2, '["TCF7L2","PPARG"]', 30.0, '2025-08-08T11:15:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_019', 'patient_test_3', 20.0, 'disease_alzheimers_1', 1, '["APOE"]', 20.0, '2025-08-08T11:15:30.000Z');
+
+-- September 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_020', 'patient_test_3', 52.0, 'disease_cardiovascular_1', 4, '["APOE","MTHFR","ACE","LDLR"]', 52.0, '2025-09-22T14:00:00.000Z');
+
+-- October 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_021', 'patient_test_3', 0.0, 'disease_lung_cancer_1', 0, '[]', 0.0, '2025-10-15T16:30:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_022', 'patient_test_3', 10.0, 'disease_obesity_1', 1, '["FTO"]', 10.0, '2025-10-15T16:30:30.000Z');
+
+-- December 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_023', 'patient_test_3', 14.4, 'disease_colorectal_1', 1, '["MSH2"]', 14.4, '2025-12-01T10:00:00.000Z');
+
+
+-- Patient 4: patient_test_4 (Mike Wong) - 7 assessments
+-- July 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_024', 'patient_test_4', 50.0, 'disease_breast_cancer_1', 2, '["BRCA1","BRCA2"]', 50.0, '2025-07-28T12:00:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_025', 'patient_test_4', 15.0, 'disease_diabetes_1', 1, '["FTO"]', 15.0, '2025-07-28T12:00:30.000Z');
+
+-- September 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_026', 'patient_test_4', 80.0, 'disease_alzheimers_1', 4, '["APOE","PSEN1","PSEN2","APP"]', 80.0, '2025-09-05T09:30:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_027', 'patient_test_4', 13.0, 'disease_cardiovascular_1', 1, '["APOE"]', 13.0, '2025-09-05T09:30:45.000Z');
+
+-- October 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_028', 'patient_test_4', 42.0, 'disease_lung_cancer_1', 3, '["EGFR","ALK","ROS1"]', 42.0, '2025-10-30T11:45:00.000Z');
+
+-- November 2025
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_029', 'patient_test_4', 40.0, 'disease_obesity_1', 4, '["FTO","MC4R","LEPR","POMC"]', 40.0, '2025-11-25T14:15:00.000Z');
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('seed_risk_030', 'patient_test_4', 57.6, 'disease_colorectal_1', 4, '["APC","MLH1","MSH2","SMAD4"]', 57.6, '2025-11-25T14:15:30.000Z');

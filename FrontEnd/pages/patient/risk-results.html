@@ -169,6 +169,11 @@
             return disease ? disease.hospitalId : 'Unknown';
         }
 
+        function getHospitalName(diseaseId) {
+            const disease = diseaseCategories.find(d => d.id === diseaseId);
+            return disease ? disease.hospitalName : 'Unknown';
+        }
+
         function getDiseaseCode(diseaseId) {
             const disease = diseaseCategories.find(d => d.id === diseaseId);
             return disease ? disease.diseaseCode : null;
@@ -240,7 +245,7 @@
                 
                 // Look up disease name from database-loaded categories
                 const diseaseName = getDiseaseName(diseaseId);
-                const hospitalId = getHospitalId(diseaseId);
+                const hospitalName = getHospitalName(diseaseId);
                 const diseaseCode = getDiseaseCode(diseaseId);
                 
                 // Determine risk level and color
@@ -280,7 +285,7 @@
                                 <h2 class="card-title" style="text-align: left;">${diseaseName}</h2>
                                 <div class="text-secondary text-sm" style="margin-top: var(--space-xs); text-align: left;">
                                     <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                                        🏥 Provider: ${hospitalId}
+                                        🏥 Provider: ${hospitalName}
                                     </span>
                                     ${diseaseCode ? `
                                     <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">

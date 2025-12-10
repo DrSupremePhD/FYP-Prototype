@@ -27,6 +27,7 @@ const Auth = {
 
     // Check if user is authenticated
     isAuthenticated() {
+        
         return this.getCurrentUser() !== null;
     },
 
@@ -39,7 +40,6 @@ const Auth = {
     // Login function
     async login(email, password) {
         try {
-            // Try backend API first
             const response = await fetch('http://localhost:3001/api/users/login', {
                 method: 'POST',
                 headers: {
@@ -48,12 +48,14 @@ const Auth = {
                 body: JSON.stringify({ email, password })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Login failed');
+                // Backend responded with an error (401, 403, etc.)
+                // Throw the error message from the backend
+                throw new Error(data.message || data.error || 'Invalid email or password');
             }
 
-            const data = await response.json();
             const user = data.user;
 
             // Clear gene upload
@@ -66,45 +68,20 @@ const Auth = {
             return user;
 
         } catch (error) {
-            // Fallback to localStorage if backend is unavailable
-            console.warn('Backend unavailable, using localStorage:', error.message);
-
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    const user = Storage.getUser(email);
-
-                    if (!user) {
-                        reject({ message: 'User not found' });
-                        return;
-                    }
-
-                    if (user.status === 'suspended') {
-                        reject({ message: 'Account suspended. Please contact support.' });
-                        return;
-                    }
-
-                    if (user.status === 'pending_approval') {
-                        reject({ message: 'Account pending approval. Please wait for system admin to approve your registration.' });
-                        return;
-                    }
-
-                    if (user.password !== password) {
-                        reject({ message: 'Invalid password' });
-                        return;
-                    }
-
-                    const { password: _, ...userWithoutPassword } = user;
-                    this.setCurrentUser(userWithoutPassword);
-                    resolve(userWithoutPassword);
-                }, 800);
-            });
+            // Check if it's a network error (backend truly unavailable)
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                console.error('Backend server is not running');
+                throw new Error('Cannot connect to server. Please try again later.');
+            }
+            
+            // Re-throw authentication errors (wrong credentials, suspended account, etc.)
+            throw error;
         }
     },
 
     // Register function
     async register(userData, autoLogin = true) {
         try {
-            // Try backend API first
             const response = await fetch('http://localhost:3001/api/users/register', {
                 method: 'POST',
                 headers: {
@@ -113,12 +90,13 @@ const Auth = {
                 body: JSON.stringify(userData)
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || error.error || 'Registration failed');
+                // Backend responded with an error
+                throw new Error(data.message || data.error || 'Registration failed');
             }
 
-            const data = await response.json();
             const user = data.user;
 
             // Auto-login for non-admin roles
@@ -129,38 +107,14 @@ const Auth = {
             return user;
 
         } catch (error) {
-            // Fallback to localStorage if backend is unavailable
-            console.warn('Backend unavailable, using localStorage:', error.message);
-
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    const existingUser = Storage.getUser(userData.email);
-                    if (existingUser) {
-                        reject({ message: 'User already exists with this email' });
-                        return;
-                    }
-
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(userData.email)) {
-                        reject({ message: 'Invalid email format' });
-                        return;
-                    }
-
-                    if (userData.password.length < 8) {
-                        reject({ message: 'Password must be at least 8 characters long' });
-                        return;
-                    }
-
-                    const newUser = Storage.addUser(userData);
-                    const { password: _, ...userWithoutPassword } = newUser;
-
-                    if (autoLogin && userData.role !== 'system_admin') {
-                        this.setCurrentUser(userWithoutPassword);
-                    }
-
-                    resolve(userWithoutPassword);
-                }, 800);
-            });
+            // Check if it's a network error (backend truly unavailable)
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                console.error('Backend server is not running');
+                throw new Error('Cannot connect to server. Please try again later.');
+            }
+            
+            // Re-throw registration errors
+            throw error;
         }
     },
 
@@ -180,20 +134,8 @@ const Auth = {
 
     // Request password reset
     async requestPasswordReset(email) {
-        // BACKEND_INTEGRATION: Replace with API call: POST /api/auth/password-reset-request
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = Storage.getUser(email);
-                if (!user) {
-                    reject({ message: 'User not found' });
-                    return;
-                }
-
-                // In production, this would send an email with a reset token
-                console.log('Password reset email sent to:', email);
-                resolve({ message: 'Password reset email sent' });
-            }, 800);
-        });
+        // TODO: Implement backend endpoint POST /api/auth/password-reset-request
+        throw new Error('Password reset feature is not yet implemented. Please contact support.');
     },
 
     // Reset password
@@ -215,87 +157,20 @@ const Auth = {
 
     // Update password for logged-in user
     async updatePassword(currentPassword, newPassword) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/auth/password
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = this.getCurrentUser();
-                if (!user) {
-                    reject({ message: 'Not authenticated' });
-                    return;
-                }
-
-                const fullUser = Storage.getUserById(user.id);
-
-                // WARNING: Password comparison should happen on server
-                if (fullUser.password !== currentPassword) {
-                    reject({ message: 'Current password is incorrect' });
-                    return;
-                }
-
-                if (newPassword.length < 8) {
-                    reject({ message: 'New password must be at least 8 characters long' });
-                    return;
-                }
-
-                // Update password
-                Storage.updateUser(user.id, { password: newPassword });
-
-                resolve({ message: 'Password updated successfully' });
-            }, 800);
-        });
+        // TODO: Implement backend endpoint PUT /api/auth/password
+        throw new Error('Password update feature is not yet implemented.');
     },
 
     // Update user profile
     async updateProfile(updates) {
-        // BACKEND_INTEGRATION: Replace with API call: PUT /api/users/profile
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = this.getCurrentUser();
-                if (!user) {
-                    reject({ message: 'Not authenticated' });
-                    return;
-                }
-
-                // Don't allow updating certain fields
-                const { id, email, password, role, ...allowedUpdates } = updates;
-
-                const updatedUser = Storage.updateUser(user.id, allowedUpdates);
-
-                // Update session
-                const { password: _, ...userWithoutPassword } = updatedUser;
-                this.setCurrentUser(userWithoutPassword);
-
-                resolve(userWithoutPassword);
-            }, 800);
-        });
+        // TODO: Implement backend endpoint PUT /api/users/profile
+        throw new Error('Profile update feature is not yet implemented.');
     },
 
     // Delete user account
     async deleteAccount(password) {
-        // BACKEND_INTEGRATION: Replace with API call: DELETE /api/users/account
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const user = this.getCurrentUser();
-                if (!user) {
-                    reject({ message: 'Not authenticated' });
-                    return;
-                }
-
-                const fullUser = Storage.getUserById(user.id);
-
-                // WARNING: Password comparison should happen on server
-                if (fullUser.password !== password) {
-                    reject({ message: 'Password is incorrect' });
-                    return;
-                }
-
-                // Delete user
-                Storage.deleteUser(user.id);
-                this.clearCurrentUser();
-
-                resolve({ message: 'Account deleted successfully' });
-            }, 800);
-        });
+        // TODO: Implement backend endpoint DELETE /api/users/account
+        throw new Error('Account deletion feature is not yet implemented.');
     },
 
     // Redirect to appropriate dashboard based on user role
