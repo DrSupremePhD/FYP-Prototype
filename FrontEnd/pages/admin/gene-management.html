@@ -22,7 +22,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Admin</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>admin@hospital.com
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5d3c393034331d35322e2d34293c31733e3230">[email&#160;protected]</a>
             </div>
         </div>
         <nav>
@@ -78,13 +78,17 @@
     <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
     <script src="../../js/api-backend.js"></script>
-    <script src="../../js/api-mock.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
-        Auth.requireRole('admin');
-        Navigation.displayUserInfo(Auth.getCurrentUser());
+        // Allow both 'admin' and 'hospital_admin' roles
+        const user = Auth.getCurrentUser();
+        if (!user || (user.role !== 'admin' && user.role !== 'hospital_admin')) {
+            Auth.requireAuth();
+            if (user) Auth.redirectToDashboard(user);
+        }
+        Navigation.displayUserInfo(user);
         Navigation.setActiveNav();
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
@@ -239,6 +243,7 @@
 
         window.showAddGeneModal = showAddGeneModal;
         window.deleteGene = deleteGene;
+        window.editGene = editGene;
 
         loadGenes();
     </script>

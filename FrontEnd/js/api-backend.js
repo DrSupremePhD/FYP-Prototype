@@ -959,10 +959,12 @@ const BackendAPI = {
                 url += `?search=${encodeURIComponent(searchTerm.trim())}`;
             }
 
+            const user = this.getCurrentUser();
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'researcher'
                 }
             });
 
@@ -989,12 +991,14 @@ const BackendAPI = {
         }
 
         try {
+            const user = this.getCurrentUser();
             const response = await fetch(
                 `${this.config.baseURL}/api/researcher/disease-analytics/${encodeURIComponent(diseaseId)}`,
                 {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Role': user?.role || 'researcher'
                     }
                 }
             );
@@ -1023,12 +1027,14 @@ const BackendAPI = {
         }
 
         try {
+            const user = this.getCurrentUser();
             const response = await fetch(
                 `${this.config.baseURL}/api/researcher/recent-assessments?limit=${limit}`,
                 {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Role': user?.role || 'researcher'
                     }
                 }
             );
@@ -1056,10 +1062,12 @@ const BackendAPI = {
         }
 
         try {
+            const user = this.getCurrentUser();
             const response = await fetch(`${this.config.baseURL}/api/researcher/consented-assessments`, {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'researcher'
                 }
             });
 
@@ -1072,6 +1080,131 @@ const BackendAPI = {
         } catch (error) {
             console.error('Error fetching consented assessments:', error);
             return [];
+        }
+    },
+
+
+    // ===================================
+    // RESEARCHER DATASETS
+    // ===================================
+    /**
+     * Get anonymized assessments for datasets export
+     * Includes date of birth for age grouping but NO personal identifiers
+     * @returns {Promise<Array>} Array of anonymized assessments
+     */
+    async getAnonymizedAssessmentsForDatasets() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/researcher/datasets/assessments`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch dataset assessments');
+            }
+
+            const data = await response.json();
+            return data.assessments || [];
+        } catch (error) {
+            console.error('Error fetching dataset assessments:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get complete disease statistics for datasets export
+     * @returns {Promise<Array>} Array of disease statistics with full metrics
+     */
+    async getCompleteDiseaseStatisticsForDatasets() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/researcher/datasets/disease-stats`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch disease statistics');
+            }
+
+            const data = await response.json();
+            return data.diseases || [];
+        } catch (error) {
+            console.error('Error fetching disease statistics:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get monthly trends for datasets export
+     * @returns {Promise<Array>} Array of monthly trend data
+     */
+    async getMonthlyTrendsForDatasets() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return [];
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/researcher/datasets/trends`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch trends');
+            }
+
+            const data = await response.json();
+            return data.trends || [];
+        } catch (error) {
+            console.error('Error fetching trends:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get aggregate statistics for datasets export
+     * @returns {Promise<Object>} Aggregate statistics object
+     */
+    async getAggregateStatisticsForDatasets() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled');
+            return null;
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/researcher/datasets/aggregate-stats`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch aggregate statistics');
+            }
+
+            const data = await response.json();
+            return data.statistics || null;
+        } catch (error) {
+            console.error('Error fetching aggregate statistics:', error);
+            return null;
         }
     },
 
@@ -1282,7 +1415,305 @@ const BackendAPI = {
             console.error('Error cleaning up audit logs:', error);
             return { success: false, error: error.message };
         }
+    },
+
+    // ===================================
+    // ORGANIZATION MANAGEMENT
+    // ===================================
+
+    /**
+     * Get pending organization registrations
+     * @returns {Promise<Array>} Array of pending registrations
+     */
+    async getPendingOrganizations() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, falling back to localStorage');
+            const users = Storage.get('users') || [];
+            return users.filter(u =>
+                (u.role === 'admin' || u.role === 'hospital' || u.role === 'doctor' || u.role === 'hospital_admin') &&
+                u.status === 'pending_approval'
+            );
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/pending`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch pending organizations');
+            }
+
+            const data = await response.json();
+            return data.registrations || [];
+        } catch (error) {
+            console.error('Error fetching pending organizations:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get all active organizations
+     * @returns {Promise<Array>} Array of organizations
+     */
+    async getActiveOrganizations() {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, falling back to localStorage');
+            const users = Storage.get('users') || [];
+            
+            // Group by organization
+            const orgsMap = {};
+            users.filter(u => 
+                (u.role === 'admin' || u.role === 'hospital' || u.role === 'doctor' || u.role === 'hospital_admin') && 
+                u.status === 'active'
+            ).forEach(u => {
+                const orgName = u.organization || u.organizationName || 'Unknown';
+                if (!orgsMap[orgName]) {
+                    orgsMap[orgName] = {
+                        name: orgName,
+                        type: u.role === 'hospital' ? 'Hospital' : 'Organization',
+                        adminEmail: u.email,
+                        userCount: 0,
+                        joinedDate: u.createdAt
+                    };
+                }
+                orgsMap[orgName].userCount++;
+            });
+            
+            return Object.values(orgsMap);
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch organizations');
+            }
+
+            const data = await response.json();
+            return data.organizations || [];
+        } catch (error) {
+            console.error('Error fetching organizations:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get organization statistics
+     * @returns {Promise<Object>} Organization statistics
+     */
+    async getOrganizationStatistics() {
+        if (!this.config.enabled) {
+            return null;
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/statistics`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch organization statistics');
+            }
+
+            const data = await response.json();
+            return data.statistics || null;
+        } catch (error) {
+            console.error('Error fetching organization statistics:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Get organization details by name
+     * @param {string} orgName - Organization name
+     * @returns {Promise<Object>} Organization details
+     */
+    async getOrganizationByName(orgName) {
+        if (!this.config.enabled) {
+            return null;
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/${encodeURIComponent(orgName)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    return null;
+                }
+                throw new Error('Failed to fetch organization');
+            }
+
+            const data = await response.json();
+            return data.organization || null;
+        } catch (error) {
+            console.error('Error fetching organization:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Approve an organization registration
+     * @param {string} userId - User ID to approve
+     * @returns {Promise<Object>} Approved user
+     */
+    async approveOrganization(userId) {
+        if (!this.config.enabled) {
+            // Fallback to localStorage
+            const users = Storage.get('users') || [];
+            const user = users.find(u => u.id === userId);
+            if (user) {
+                user.status = 'active';
+                Storage.set('users', users);
+            }
+            return user;
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/approve/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to approve organization');
+            }
+
+            const data = await response.json();
+            return data.user;
+        } catch (error) {
+            console.error('Error approving organization:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Reject an organization registration
+     * @param {string} userId - User ID to reject
+     * @returns {Promise<boolean>} Success status
+     */
+    async rejectOrganization(userId) {
+        if (!this.config.enabled) {
+            // Fallback to localStorage
+            Storage.deleteUser(userId);
+            return true;
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/reject/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to reject organization');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error rejecting organization:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Suspend an organization (all members)
+     * @param {string} orgName - Organization name
+     * @returns {Promise<Object>} Result with users affected count
+     */
+    async suspendOrganization(orgName) {
+        if (!this.config.enabled) {
+            return { success: false };
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/${encodeURIComponent(orgName)}/suspend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to suspend organization');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error suspending organization:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Activate an organization (all members)
+     * @param {string} orgName - Organization name
+     * @returns {Promise<Object>} Result with users affected count
+     */
+    async activateOrganization(orgName) {
+        if (!this.config.enabled) {
+            return { success: false };
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/organizations/${encodeURIComponent(orgName)}/activate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to activate organization');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error activating organization:', error);
+            throw error;
+        }
     }
+
 
 };
 

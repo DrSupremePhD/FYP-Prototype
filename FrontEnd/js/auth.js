@@ -192,6 +192,7 @@ const Auth = {
         const dashboardPaths = {
             patient: basePath + 'patient/dashboard.html',
             hospital: basePath + 'hospital/dashboard.html',
+            hospital_admin: basePath + 'admin/dashboard.html',
             admin: basePath + 'admin/dashboard.html',
             system_admin: basePath + 'system-admin/dashboard.html',
             researcher: basePath + 'researcher/dashboard.html'

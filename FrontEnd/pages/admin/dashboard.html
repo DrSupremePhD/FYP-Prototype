@@ -25,7 +25,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Admin</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>admin@hospital.com
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="046560696d6a446c6b77746d7065682a676b69">[email&#160;protected]</a>
             </div>
         </div>
 
@@ -108,12 +108,15 @@
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/api-backend.js"></script>
-    <script src="../../js/api-mock.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
-        Auth.requireRole('admin');
+        // Allow both 'admin' and 'hospital_admin' roles to access this page
         const user = Auth.getCurrentUser();
+        if (!user || (user.role !== 'admin' && user.role !== 'hospital_admin')) {
+            Auth.requireAuth();
+            if (user) Auth.redirectToDashboard(user);
+        }
         Navigation.displayUserInfo(user);
         Navigation.setActiveNav();
 
@@ -121,16 +124,36 @@
 
         async function loadDashboard() {
             try {
-                // BACKEND_INTEGRATION: API calls to fetch stats
-                const genes = await API.getGenes();
-                const categories = await API.getDiseaseCategories();
-                const users = Storage.get('users') || [];
-                const assessments = Storage.getRiskAssessments() || [];
+                // Get disease categories from backend
+                const categories = await BackendAPI.getDiseaseCategories() || [];
+                
+                // Calculate total genes across all categories
+                let totalGenes = 0;
+                for (const cat of categories) {
+                    if (cat.geneCount) {
+                        totalGenes += cat.geneCount;
+                    }
+                }
+                
+                // Get users from backend
+                const users = await BackendAPI.getAllUsers() || [];
+                
+                // Get assessment count - use current user's assessments as a proxy
+                // or set to 0 if not available
+                let assessmentCount = 0;
+                try {
+                    if (user && user.id) {
+                        const assessments = await BackendAPI.getRiskAssessments(user.id) || [];
+                        assessmentCount = assessments.length;
+                    }
+                } catch (e) {
+                    console.log('Could not load assessments:', e);
+                }
 
-                document.getElementById('geneCount').textContent = genes.length;
+                document.getElementById('geneCount').textContent = totalGenes;
                 document.getElementById('categoryCount').textContent = categories.length;
                 document.getElementById('userCount').textContent = users.length;
-                document.getElementById('assessmentCount').textContent = assessments.length;
+                document.getElementById('assessmentCount').textContent = assessmentCount;
 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
@@ -139,18 +162,30 @@
         }
 
         async function showAnalytics() {
-            const genes = await API.getGenes();
-            const categories = await API.getDiseaseCategories();
-            const users = Storage.get('users') || [];
-            const assessments = Storage.getRiskAssessments() || [];
+            const categories = await BackendAPI.getDiseaseCategories() || [];
+            let totalGenes = 0;
+            for (const cat of categories) {
+                if (cat.geneCount) {
+                    totalGenes += cat.geneCount;
+                }
+            }
+            const users = await BackendAPI.getAllUsers() || [];
+            
+            // Get assessment count
+            let assessmentCount = 0;
+            try {
+                if (user && user.id) {
+                    const assessments = await BackendAPI.getRiskAssessments(user.id) || [];
+                    assessmentCount = assessments.length;
+                }
+            } catch (e) {
+                console.log('Could not load assessments:', e);
+            }
 
             // Calculate some basic analytics
             const patientCount = users.filter(u => u.role === 'patient').length;
             const hospitalCount = users.filter(u => u.role === 'hospital').length;
             const researcherCount = users.filter(u => u.role === 'researcher').length;
-            const avgRisk = assessments.length > 0
-                ? (assessments.reduce((sum, a) => sum + (a.overallRisk || 0), 0) / assessments.length).toFixed(1)
-                : 0;
 
             UI.showModal({
                 title: 'Platform Analytics',
@@ -158,7 +193,7 @@
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-lg);">
                         <div class="card" style="padding: var(--space-md);">
                             <div class="text-tertiary text-sm">Total Genes</div>
-                            <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--primary-color);">${genes.length}</div>
+                            <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--primary-color);">${totalGenes}</div>
                         </div>
                         <div class="card" style="padding: var(--space-md);">
                             <div class="text-tertiary text-sm">Disease Categories</div>
@@ -170,7 +205,7 @@
                         </div>
                         <div class="card" style="padding: var(--space-md);">
                             <div class="text-tertiary text-sm">Risk Assessments</div>
-                            <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--success-color);">${assessments.length}</div>
+                            <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--success-color);">${assessmentCount}</div>
                         </div>
                     </div>
                     
@@ -182,16 +217,12 @@
                                 <div style="font-weight: 600; font-size: var(--text-lg);">${patientCount}</div>
                             </div>
                             <div>
-                                <div class="text-sm text-secondary">Doctors</div>
+                                <div class="text-sm text-secondary">Specialists</div>
                                 <div style="font-weight: 600; font-size: var(--text-lg);">${hospitalCount}</div>
                             </div>
                             <div>
                                 <div class="text-sm text-secondary">Researchers</div>
                                 <div style="font-weight: 600; font-size: var(--text-lg);">${researcherCount}</div>
-                            </div>
-                            <div>
-                                <div class="text-sm text-secondary">Average Risk</div>
-                                <div style="font-weight: 600; font-size: var(--text-lg);">${avgRisk}%</div>
                             </div>
                         </div>
                     </div>

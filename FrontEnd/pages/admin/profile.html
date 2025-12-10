@@ -24,7 +24,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Admin</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>admin@hospital.com
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fa9b9e979394ba9295898a938e9b96d4999597">[email&#160;protected]</a>
             </div>
         </div>
 
@@ -128,23 +128,26 @@
     <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
     <script src="../../js/api-backend.js"></script>
-    <script src="../../js/api-mock.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
-        Auth.requireRole('admin');
+        // Allow both 'admin' and 'hospital_admin' roles
         const user = Auth.getCurrentUser();
+        if (!user || (user.role !== 'admin' && user.role !== 'hospital_admin')) {
+            Auth.requireAuth();
+            if (user) Auth.redirectToDashboard(user);
+        }
         Navigation.displayUserInfo(user);
         Navigation.setActiveNav();
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
         // Load user data
-        document.getElementById('firstName').value = user.firstName || '';
-        document.getElementById('lastName').value = user.lastName || '';
+        document.getElementById('firstName').value = user.first_name || user.firstName || '';
+        document.getElementById('lastName').value = user.last_name || user.lastName || '';
         document.getElementById('email').value = user.email;
-        document.getElementById('organization').value = user.organization || '';
+        document.getElementById('organization').value = user.organization_name || user.organization || '';
 
         // Profile form
         document.getElementById('profileForm').addEventListener('submit', async (e) => {

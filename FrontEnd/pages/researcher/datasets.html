@@ -49,8 +49,8 @@
     <main class="main-with-sidebar">
         <div class="container-fluid">
             <div style="margin-bottom: var(--space-2xl);">
-                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Available
-                    Datasets</h1>
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                    Available Datasets</h1>
                 <p class="text-secondary">Browse and access anonymized research data</p>
             </div>
 
@@ -58,8 +58,9 @@
             <div class="alert alert-info" style="margin-bottom: var(--space-xl);">
                 <span class="alert-icon">🔒</span>
                 <div class="alert-content">
-                    <strong>Privacy Protected:</strong> All datasets are fully anomymized. No personally identifiable
-                    information is available.
+                    <strong>Privacy Protected:</strong> All datasets are fully anonymized. No personally identifiable
+                    information (names, emails, phone numbers) is included. Only data from patients who have consented 
+                    to research sharing is available.
                 </div>
             </div>
 
@@ -73,10 +74,10 @@
                         <div style="margin-bottom: var(--space-md);">
                             <div class="text-secondary text-sm">Records:</div>
                             <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--primary-color);"
-                                id="assessmentRecords">0</div>
+                                id="assessmentRecords">Loading...</div>
                         </div>
                         <p class="text-secondary" style="margin-bottom: var(--space-lg);">Anonymized risk assessment
-                            results across all disease categories</p>
+                            results across all disease categories (from consented patients only)</p>
                         <button class="btn btn-primary" onclick="exportDataset('risk_assessments')">Export CSV</button>
                         <button class="btn btn-outline" onclick="viewSample('risk_assessments')">View Sample</button>
                     </div>
@@ -90,10 +91,10 @@
                         <div style="margin-bottom: var(--space-md);">
                             <div class="text-secondary text-sm">Categories:</div>
                             <div style="font-size: var(--text-2xl); font-weight: 700; color: var(--secondary-color);"
-                                id="categoryCount">0</div>
+                                id="categoryCount">Loading...</div>
                         </div>
                         <p class="text-secondary" style="margin-bottom: var(--space-lg);">Distribution of assessments
-                            across disease categories</p>
+                            across disease categories with aggregate statistics</p>
                         <button class="btn btn-primary" onclick="exportDataset('categories')">Export CSV</button>
                         <button class="btn btn-outline" onclick="viewSample('categories')">View Sample</button>
                     </div>
@@ -106,11 +107,11 @@
                     <div class="card-body">
                         <div style="margin-bottom: var(--space-md);">
                             <div class="text-secondary text-sm">Time Range:</div>
-                            <div style="font-size: var(--text-lg); font-weight: 600; color: var(--accent-color);">Last
-                                12 months</div>
+                            <div style="font-size: var(--text-lg); font-weight: 600; color: var(--accent-color);" 
+                                id="timeRange">Loading...</div>
                         </div>
                         <p class="text-secondary" style="margin-bottom: var(--space-lg);">Risk assessment trends over
-                            time</p>
+                            time (monthly aggregates)</p>
                         <button class="btn btn-primary" onclick="exportDataset('trends')">Export CSV</button>
                         <button class="btn btn-outline" onclick="viewSample('trends')">View Sample</button>
                     </div>
@@ -123,11 +124,11 @@
                     <div class="card-body">
                         <div style="margin-bottom: var(--space-md);">
                             <div class="text-secondary text-sm">Metrics:</div>
-                            <div style="font-size: var(--text-lg); font-weight: 600; color: var(--success-color);">15+
-                                metrics</div>
+                            <div style="font-size: var(--text-lg); font-weight: 600; color: var(--success-color);"
+                                id="metricsCount">Loading...</div>
                         </div>
-                        <p class="text-secondary" style="margin-bottom: var(--space-lg);">Summary statistics and
-                            correlations</p>
+                        <p class="text-secondary" style="margin-bottom: var(--space-lg);">Summary statistics including
+                            risk distributions and demographic breakdowns</p>
                         <button class="btn btn-primary" onclick="exportDataset('stats')">Export CSV</button>
                         <button class="btn btn-outline" onclick="viewSample('stats')">View Sample</button>
                     </div>
@@ -138,7 +139,7 @@
 
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
-    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/api-backend.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
@@ -149,82 +150,354 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
+        // Store loaded data for use in exports and previews
+        let datasetsCache = {
+            assessments: [],
+            diseaseStats: [],
+            trends: [],
+            stats: null
+        };
+
+        /**
+         * Calculate age from date of birth
+         * @param {string} dateOfBirth - ISO date string
+         * @returns {number|null} Age in years or null if invalid
+         */
+        function calculateAge(dateOfBirth) {
+            if (!dateOfBirth) return null;
+            const dob = new Date(dateOfBirth);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        /**
+         * Get age group from age
+         * @param {number} age - Age in years
+         * @returns {string} Age group label
+         */
+        function getAgeGroup(age) {
+            if (age === null || age === undefined) return 'Unknown';
+            if (age <= 20) return '≤20';
+            if (age <= 30) return '21-30';
+            if (age <= 40) return '31-40';
+            if (age <= 50) return '41-50';
+            if (age <= 60) return '51-60';
+            if (age <= 70) return '61-70';
+            return '71+';
+        }
+
+        /**
+         * Get risk level from risk percentage
+         * @param {number} risk - Risk percentage
+         * @returns {string} Risk level (Low, Medium, High)
+         */
+        function getRiskLevel(risk) {
+            if (risk < 40) return 'Low';
+            if (risk < 70) return 'Medium';
+            return 'High';
+        }
+
+        /**
+         * Load all datasets from backend
+         */
         async function loadDatasets() {
             try {
-                const assessments = await API.getRiskAssessments();
-                const categories = await API.getDiseaseCategories();
+                // Load consented assessments (anonymized)
+                const assessments = await BackendAPI.getConsentedAssessments();
+                datasetsCache.assessments = assessments;
+                
+                // Load disease statistics
+                const diseaseStats = await BackendAPI.getDiseaseStatistics();
+                datasetsCache.diseaseStats = diseaseStats;
 
-                document.getElementById('assessmentRecords').textContent = assessments.filter(a => a.dataSharing).length;
-                document.getElementById('categoryCount').textContent = categories.length;
+                // Update UI counts
+                document.getElementById('assessmentRecords').textContent = assessments.length;
+                document.getElementById('categoryCount').textContent = diseaseStats.length;
+
+                // Calculate time range from assessments
+                if (assessments.length > 0) {
+                    const dates = assessments.map(a => new Date(a.createdAt)).sort((a, b) => a - b);
+                    const oldestDate = dates[0];
+                    const newestDate = dates[dates.length - 1];
+                    const monthsDiff = Math.ceil((newestDate - oldestDate) / (1000 * 60 * 60 * 24 * 30));
+                    document.getElementById('timeRange').textContent = `Last ${Math.max(monthsDiff, 1)} months`;
+                    
+                    // Generate trends data (monthly aggregates)
+                    datasetsCache.trends = generateMonthlyTrends(assessments);
+                } else {
+                    document.getElementById('timeRange').textContent = 'No data';
+                    datasetsCache.trends = [];
+                }
+
+                // Calculate aggregated statistics
+                datasetsCache.stats = calculateAggregateStats(assessments, diseaseStats);
+                document.getElementById('metricsCount').textContent = `${Object.keys(datasetsCache.stats).length}+ metrics`;
+
             } catch (error) {
                 console.error('Error loading datasets:', error);
+                document.getElementById('assessmentRecords').textContent = '0';
+                document.getElementById('categoryCount').textContent = '0';
+                document.getElementById('timeRange').textContent = 'Error loading';
+                document.getElementById('metricsCount').textContent = 'Error';
             }
         }
 
+        /**
+         * Generate monthly trend data from assessments
+         * @param {Array} assessments - Array of assessment objects
+         * @returns {Array} Monthly aggregated data
+         */
+        function generateMonthlyTrends(assessments) {
+            const monthlyData = {};
+            
+            assessments.forEach(a => {
+                const date = new Date(a.createdAt);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!monthlyData[monthKey]) {
+                    monthlyData[monthKey] = {
+                        month: monthKey,
+                        count: 0,
+                        totalRisk: 0,
+                        highRiskCount: 0
+                    };
+                }
+                
+                monthlyData[monthKey].count++;
+                monthlyData[monthKey].totalRisk += (a.riskPercentage || 0);
+                if ((a.riskPercentage || 0) >= 70) {
+                    monthlyData[monthKey].highRiskCount++;
+                }
+            });
+            
+            // Convert to array and calculate averages
+            return Object.values(monthlyData)
+                .map(m => ({
+                    month: m.month,
+                    assessmentCount: m.count,
+                    avgRiskPercentage: m.count > 0 ? Math.round((m.totalRisk / m.count) * 10) / 10 : 0,
+                    highRiskCount: m.highRiskCount
+                }))
+                .sort((a, b) => b.month.localeCompare(a.month)); // Sort newest first
+        }
+
+        /**
+         * Calculate aggregate statistics from assessments
+         * @param {Array} assessments - Array of assessment objects
+         * @param {Array} diseaseStats - Array of disease statistics
+         * @returns {Object} Aggregate statistics
+         */
+        function calculateAggregateStats(assessments, diseaseStats) {
+            if (assessments.length === 0) {
+                return {
+                    totalAssessments: 0,
+                    meanRiskScore: 0,
+                    medianRiskScore: 0,
+                    stdDevRisk: 0,
+                    highRiskPercentage: 0,
+                    mediumRiskPercentage: 0,
+                    lowRiskPercentage: 0,
+                    uniquePatients: 0,
+                    diseaseCategoriesAnalyzed: diseaseStats.length,
+                    avgAssessmentsPerDisease: 0
+                };
+            }
+
+            const riskValues = assessments.map(a => a.riskPercentage || 0).sort((a, b) => a - b);
+            const n = riskValues.length;
+            
+            // Mean
+            const mean = riskValues.reduce((sum, r) => sum + r, 0) / n;
+            
+            // Median
+            const median = n % 2 === 0 
+                ? (riskValues[n/2 - 1] + riskValues[n/2]) / 2 
+                : riskValues[Math.floor(n/2)];
+            
+            // Standard deviation
+            const variance = riskValues.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / n;
+            const stdDev = Math.sqrt(variance);
+            
+            // Risk level counts
+            const highRisk = riskValues.filter(r => r >= 70).length;
+            const mediumRisk = riskValues.filter(r => r >= 40 && r < 70).length;
+            const lowRisk = riskValues.filter(r => r < 40).length;
+            
+            // Unique patients (by counting unique visitor IDs - anonymized identifiers)
+            const uniquePatients = new Set(assessments.map(a => a.visitorId || a.userId)).size;
+
+            return {
+                totalAssessments: n,
+                meanRiskScore: Math.round(mean * 10) / 10,
+                medianRiskScore: Math.round(median * 10) / 10,
+                stdDevRisk: Math.round(stdDev * 10) / 10,
+                highRiskPercentage: Math.round((highRisk / n) * 1000) / 10,
+                mediumRiskPercentage: Math.round((mediumRisk / n) * 1000) / 10,
+                lowRiskPercentage: Math.round((lowRisk / n) * 1000) / 10,
+                uniquePatients: uniquePatients,
+                diseaseCategoriesAnalyzed: diseaseStats.length,
+                avgAssessmentsPerDisease: diseaseStats.length > 0 
+                    ? Math.round((n / diseaseStats.length) * 10) / 10 
+                    : 0
+            };
+        }
+
+        /**
+         * Export dataset as CSV file
+         * @param {string} type - Dataset type (risk_assessments, categories, trends, stats)
+         */
         async function exportDataset(type) {
             UI.showLoading('Preparing export...');
+            
             try {
-                const data = await API.exportAnalytics({ type }, 'csv');
+                let csvContent = '';
+                let filename = '';
 
-                // Create download
-                const blob = new Blob([data], { type: 'text/csv' });
+                if (type === 'risk_assessments') {
+                    // Export anonymized risk assessments
+                    // IMPORTANT: We do NOT include any PII (names, emails, phone numbers, or IDs)
+                    csvContent = 'Age_Group,Risk_Percentage,Risk_Level,Disease_Category,Match_Count,Assessment_Date\n';
+                    
+                    for (const a of datasetsCache.assessments) {
+                        const age = calculateAge(a.dateOfBirth);
+                        const ageGroup = getAgeGroup(age);
+                        const riskLevel = getRiskLevel(a.riskPercentage || 0);
+                        
+                        // Get disease name from disease stats
+                        const disease = datasetsCache.diseaseStats.find(d => d.diseaseId === a.diseaseId);
+                        const diseaseName = disease ? disease.diseaseName : 'Unknown';
+                        
+                        csvContent += `${ageGroup},${a.riskPercentage || 0},${riskLevel},"${diseaseName}",${a.matchCount || 0},${a.createdAt}\n`;
+                    }
+                    filename = `privagene_risk_assessments_anonymized_${new Date().toISOString().split('T')[0]}.csv`;
+
+                } else if (type === 'categories') {
+                    // Export disease category distribution
+                    csvContent = 'Disease_Category,Disease_Code,Hospital,Assessment_Count,Avg_Risk_Percentage,High_Risk_Count,Min_Risk,Max_Risk\n';
+                    
+                    for (const d of datasetsCache.diseaseStats) {
+                        csvContent += `"${d.diseaseName}","${d.diseaseCode || ''}","${d.hospitalName || 'Unknown'}",${d.assessmentCount || 0},${d.avgRiskPercentage || 0},${d.highRiskCount || 0},${d.minRiskPercentage || 0},${d.maxRiskPercentage || 0}\n`;
+                    }
+                    filename = `privagene_disease_categories_${new Date().toISOString().split('T')[0]}.csv`;
+
+                } else if (type === 'trends') {
+                    // Export temporal trends
+                    csvContent = 'Month,Assessment_Count,Avg_Risk_Percentage,High_Risk_Count\n';
+                    
+                    for (const t of datasetsCache.trends) {
+                        csvContent += `${t.month},${t.assessmentCount},${t.avgRiskPercentage},${t.highRiskCount}\n`;
+                    }
+                    filename = `privagene_temporal_trends_${new Date().toISOString().split('T')[0]}.csv`;
+
+                } else if (type === 'stats') {
+                    // Export aggregated statistics
+                    csvContent = 'Metric,Value,Description\n';
+                    
+                    const stats = datasetsCache.stats;
+                    csvContent += `Total_Assessments,${stats.totalAssessments},Total number of risk assessments from consented patients\n`;
+                    csvContent += `Mean_Risk_Score,${stats.meanRiskScore},Average risk percentage across all assessments\n`;
+                    csvContent += `Median_Risk_Score,${stats.medianRiskScore},Median risk percentage\n`;
+                    csvContent += `Std_Dev_Risk,${stats.stdDevRisk},Standard deviation of risk scores\n`;
+                    csvContent += `High_Risk_Percentage,${stats.highRiskPercentage}%,Percentage of assessments with risk >= 70%\n`;
+                    csvContent += `Medium_Risk_Percentage,${stats.mediumRiskPercentage}%,Percentage of assessments with risk 40-69%\n`;
+                    csvContent += `Low_Risk_Percentage,${stats.lowRiskPercentage}%,Percentage of assessments with risk < 40%\n`;
+                    csvContent += `Unique_Patients,${stats.uniquePatients},Number of unique patients (anonymized count)\n`;
+                    csvContent += `Disease_Categories,${stats.diseaseCategoriesAnalyzed},Number of disease categories analyzed\n`;
+                    csvContent += `Avg_Assessments_Per_Disease,${stats.avgAssessmentsPerDisease},Average assessments per disease category\n`;
+                    
+                    filename = `privagene_aggregate_statistics_${new Date().toISOString().split('T')[0]}.csv`;
+                }
+
+                // Create and trigger download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `privagene_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+                a.download = filename;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
                 UI.showAlert('Dataset exported successfully', 'success');
             } catch (error) {
-                console.error('Error:', error);
-                UI.showAlert('Failed to export dataset', 'error');
+                console.error('Export error:', error);
+                UI.showAlert('Failed to export dataset: ' + error.message, 'error');
             } finally {
                 UI.hideLoading();
             }
         }
 
+        /**
+         * View sample data in a modal
+         * @param {string} type - Dataset type
+         */
         async function viewSample(type) {
             let sampleData = [];
             let columns = [];
+            let totalRecords = 0;
 
-            // Generate mock sample data based on type
             if (type === 'risk_assessments') {
-                columns = ['ID', 'Age', 'Risk %', 'Category', 'Date'];
-                sampleData = [
-                    ['RA-001', '45', '68', 'Breast Cancer', '2025-01-15'],
-                    ['RA-002', '52', '42', 'Alzheimers', '2025-01-18'],
-                    ['RA-003', '38', '75', 'Ovarian Cancer', '2025-01-20'],
-                    ['RA-004', '61', '35', 'Hemochromatosis', '2025-01-22'],
-                    ['RA-005', '49', '58', 'Breast Cancer', '2025-01-25']
-                ];
+                columns = ['Age Group', 'Risk %', 'Risk Level', 'Category', 'Date'];
+                totalRecords = datasetsCache.assessments.length;
+                
+                // Get first 5 records (anonymized - no IDs shown)
+                sampleData = datasetsCache.assessments.slice(0, 5).map(a => {
+                    const age = calculateAge(a.dateOfBirth);
+                    const disease = datasetsCache.diseaseStats.find(d => d.diseaseId === a.diseaseId);
+                    return [
+                        getAgeGroup(age),
+                        (a.riskPercentage || 0).toFixed(1),
+                        getRiskLevel(a.riskPercentage || 0),
+                        disease ? disease.diseaseName : 'Unknown',
+                        new Date(a.createdAt).toLocaleDateString()
+                    ];
+                });
+
             } else if (type === 'categories') {
                 columns = ['Category', 'Count', 'Avg Risk %', 'High Risk'];
-                sampleData = [
-                    ['Breast Cancer', '145', '62', '89'],
-                    ['Ovarian Cancer', '98', '58', '64'],
-                    ['Alzheimers', '76', '45', '32'],
-                    ['Hemochromatosis', '54', '38', '18'],
-                    ['Li-Fraumeni Syndrome', '23', '71', '19']
-                ];
+                totalRecords = datasetsCache.diseaseStats.length;
+                
+                sampleData = datasetsCache.diseaseStats.slice(0, 5).map(d => [
+                    d.diseaseName,
+                    d.assessmentCount || 0,
+                    (d.avgRiskPercentage || 0).toFixed(1),
+                    d.highRiskCount || 0
+                ]);
+
             } else if (type === 'trends') {
                 columns = ['Month', 'Assessments', 'Avg Risk %', 'High Risk Count'];
-                sampleData = [
-                    ['Jan 2025', '42', '54', '18'],
-                    ['Dec 2024', '38', '52', '16'],
-                    ['Nov 2024', '45', '56', '21'],
-                    ['Oct 2024', '39', '51', '15'],
-                    ['Sep 2024', '41', '53', '17']
-                ];
+                totalRecords = datasetsCache.trends.length;
+                
+                sampleData = datasetsCache.trends.slice(0, 5).map(t => [
+                    t.month,
+                    t.assessmentCount,
+                    t.avgRiskPercentage.toFixed(1),
+                    t.highRiskCount
+                ]);
+
             } else if (type === 'stats') {
-                columns = ['Metric', 'Value', 'Percentile', 'Trend'];
+                columns = ['Metric', 'Value', 'Description'];
+                const stats = datasetsCache.stats;
+                totalRecords = 10;
+                
                 sampleData = [
-                    ['Mean Risk Score', '52.4', '50th', '↑ 2.1%'],
-                    ['Median Age', '47', '—', '→ 0%'],
-                    ['High Risk %', '34.2', '75th', '↓ 1.5%'],
-                    ['Sample Size', '396', '—', '↑ 12.3%'],
-                    ['Categories Covered', '5', '—', '→ 0%']
+                    ['Mean Risk Score', stats.meanRiskScore, 'Average across all'],
+                    ['Median Risk Score', stats.medianRiskScore, '50th percentile'],
+                    ['High Risk %', stats.highRiskPercentage + '%', 'Risk >= 70%'],
+                    ['Total Assessments', stats.totalAssessments, 'Sample size'],
+                    ['Categories', stats.diseaseCategoriesAnalyzed, 'Disease types']
                 ];
+            }
+
+            // Handle empty data
+            if (sampleData.length === 0) {
+                sampleData = [['No data available', '-', '-', '-', '-', '-'].slice(0, columns.length)];
             }
 
             const tableRows = sampleData.map(row => `
@@ -234,13 +507,19 @@
             `).join('');
 
             UI.showModal({
-                title: `Sample Data - ${type.replace(/_/g, ' ').toUpperCase()}`,
+                title: `Sample Data - ${type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
                 body: `
+                    <div class="alert alert-info" style="margin-bottom: var(--space-md);">
+                        <span class="alert-icon">🔒</span>
+                        <div class="alert-content">
+                            <strong>Privacy Notice:</strong> All data shown is anonymized. No personal identifiers are included.
+                        </div>
+                    </div>
                     <div style="overflow-x: auto;">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    ${columns.map(col => `<th>${col}</th>`).join('')}
+                                    ${columns.map(col => `<th style="padding: var(--space-sm); text-align: left; border-bottom: 2px solid var(--border-color);">${col}</th>`).join('')}
                                 </tr>
                             </thead>
                             <tbody>
@@ -249,7 +528,7 @@
                         </table>
                     </div>
                     <div class="text-secondary text-sm" style="margin-top: var(--space-md);">
-                        Showing 5 of ${sampleData.length * 10} records (limited for preview)
+                        Showing ${Math.min(5, sampleData.length)} of ${totalRecords} records (preview only)
                     </div>
                 `,
                 buttons: [
@@ -258,9 +537,11 @@
             });
         }
 
+        // Make functions globally available
         window.exportDataset = exportDataset;
         window.viewSample = viewSample;
 
+        // Load datasets on page load
         loadDatasets();
     </script>
 </body>

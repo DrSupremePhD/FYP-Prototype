@@ -449,6 +449,291 @@ app.patch('/api/users/:id/status', requireRole(['admin', 'system_admin']), async
 
 
 // ===================================
+// ORGANIZATION MANAGEMENT ENDPOINTS
+// ===================================
+
+const organizationService = require('./services/organizationService');
+
+// Get pending organization registrations (system_admin only)
+app.get('/api/organizations/pending', requireRole(['admin', 'system_admin']), async (req, res) => {
+    try {
+        const pending = await organizationService.getPendingRegistrations();
+        
+        return res.json({
+            success: true,
+            count: pending.length,
+            registrations: pending
+        });
+    } catch (err) {
+        console.error('Get pending registrations error:', err);
+        return res.status(500).json({
+            error: 'Failed to retrieve pending registrations',
+            message: err.message
+        });
+    }
+});
+
+// Get all active organizations (system_admin only)
+app.get('/api/organizations', requireRole(['admin', 'system_admin']), async (req, res) => {
+    try {
+        const organizations = await organizationService.getActiveOrganizations();
+        
+        return res.json({
+            success: true,
+            count: organizations.length,
+            organizations
+        });
+    } catch (err) {
+        console.error('Get organizations error:', err);
+        return res.status(500).json({
+            error: 'Failed to retrieve organizations',
+            message: err.message
+        });
+    }
+});
+
+// Get organization statistics (system_admin only)
+app.get('/api/organizations/statistics', requireRole(['admin', 'system_admin']), async (req, res) => {
+    try {
+        const statistics = await organizationService.getOrganizationStatistics();
+        
+        return res.json({
+            success: true,
+            statistics
+        });
+    } catch (err) {
+        console.error('Get organization statistics error:', err);
+        return res.status(500).json({
+            error: 'Failed to retrieve organization statistics',
+            message: err.message
+        });
+    }
+});
+
+// Get organization details by name (system_admin only)
+app.get('/api/organizations/:name', requireRole(['admin', 'system_admin']), async (req, res) => {
+    try {
+        const orgName = decodeURIComponent(req.params.name);
+        const organization = await organizationService.getOrganizationByName(orgName);
+        
+        if (!organization) {
+            return res.status(404).json({
+                error: 'Organization not found'
+            });
+        }
+        
+        return res.json({
+            success: true,
+            organization
+        });
+    } catch (err) {
+        console.error('Get organization error:', err);
+        return res.status(500).json({
+            error: 'Failed to retrieve organization',
+            message: err.message
+        });
+    }
+});
+
+// Approve organization registration (system_admin only)
+app.post('/api/organizations/approve/:userId', requireRole(['admin', 'system_admin']), async (req, res) => {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const adminRole = req.context?.originalRole || 'system_admin';
+    
+    try {
+        const { userId } = req.params;
+        
+        // Get user before approval for logging
+        const userBefore = await userService.getUserById(userId);
+        if (!userBefore) {
+            return res.status(404).json({
+                error: 'User not found'
+            });
+        }
+        
+        if (userBefore.status !== 'pending_approval') {
+            return res.status(400).json({
+                error: 'User is not pending approval',
+                currentStatus: userBefore.status
+            });
+        }
+        
+        const user = await organizationService.approveRegistration(userId);
+        
+        // Log the approval
+        await auditService.createLog({
+            userRole: adminRole,
+            action: 'organization_approved',
+            resourceType: 'organization',
+            resourceId: userId,
+            status: 'success',
+            severity: 'info',
+            ipAddress,
+            userAgent,
+            details: {
+                approvedUserEmail: user.email,
+                approvedUserRole: user.role,
+                organizationName: user.organization_name,
+                message: 'Organization registration approved'
+            }
+        });
+        
+        const { password: _, ...userData } = user;
+        return res.json({
+            success: true,
+            user: userData,
+            message: 'Organization registration approved successfully'
+        });
+    } catch (err) {
+        console.error('Approve registration error:', err);
+        return res.status(500).json({
+            error: 'Failed to approve registration',
+            message: err.message
+        });
+    }
+});
+
+// Reject organization registration (system_admin only)
+app.delete('/api/organizations/reject/:userId', requireRole(['admin', 'system_admin']), async (req, res) => {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const adminRole = req.context?.originalRole || 'system_admin';
+    
+    try {
+        const { userId } = req.params;
+        
+        // Get user before rejection for logging
+        const userBefore = await userService.getUserById(userId);
+        if (!userBefore) {
+            return res.status(404).json({
+                error: 'User not found'
+            });
+        }
+        
+        if (userBefore.status !== 'pending_approval') {
+            return res.status(400).json({
+                error: 'User is not pending approval',
+                currentStatus: userBefore.status
+            });
+        }
+        
+        await organizationService.rejectRegistration(userId);
+        
+        // Log the rejection
+        await auditService.createLog({
+            userRole: adminRole,
+            action: 'organization_rejected',
+            resourceType: 'organization',
+            resourceId: userId,
+            status: 'success',
+            severity: 'warning',
+            ipAddress,
+            userAgent,
+            details: {
+                rejectedUserEmail: userBefore.email,
+                rejectedUserRole: userBefore.role,
+                organizationName: userBefore.organization_name,
+                message: 'Organization registration rejected'
+            }
+        });
+        
+        return res.json({
+            success: true,
+            message: 'Organization registration rejected'
+        });
+    } catch (err) {
+        console.error('Reject registration error:', err);
+        return res.status(500).json({
+            error: 'Failed to reject registration',
+            message: err.message
+        });
+    }
+});
+
+// Suspend an entire organization (system_admin only)
+app.post('/api/organizations/:name/suspend', requireRole(['admin', 'system_admin']), async (req, res) => {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const adminRole = req.context?.originalRole || 'system_admin';
+    
+    try {
+        const orgName = decodeURIComponent(req.params.name);
+        const suspendedCount = await organizationService.suspendOrganization(orgName);
+        
+        // Log the suspension
+        await auditService.createLog({
+            userRole: adminRole,
+            action: 'organization_suspended',
+            resourceType: 'organization',
+            resourceId: orgName,
+            status: 'success',
+            severity: 'warning',
+            ipAddress,
+            userAgent,
+            details: {
+                organizationName: orgName,
+                usersAffected: suspendedCount,
+                message: 'Organization suspended'
+            }
+        });
+        
+        return res.json({
+            success: true,
+            message: `Organization suspended. ${suspendedCount} user(s) affected.`,
+            usersAffected: suspendedCount
+        });
+    } catch (err) {
+        console.error('Suspend organization error:', err);
+        return res.status(500).json({
+            error: 'Failed to suspend organization',
+            message: err.message
+        });
+    }
+});
+
+// Activate an organization (system_admin only)
+app.post('/api/organizations/:name/activate', requireRole(['admin', 'system_admin']), async (req, res) => {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const adminRole = req.context?.originalRole || 'system_admin';
+    
+    try {
+        const orgName = decodeURIComponent(req.params.name);
+        const activatedCount = await organizationService.activateOrganization(orgName);
+        
+        // Log the activation
+        await auditService.createLog({
+            userRole: adminRole,
+            action: 'organization_activated',
+            resourceType: 'organization',
+            resourceId: orgName,
+            status: 'success',
+            severity: 'info',
+            ipAddress,
+            userAgent,
+            details: {
+                organizationName: orgName,
+                usersAffected: activatedCount,
+                message: 'Organization activated'
+            }
+        });
+        
+        return res.json({
+            success: true,
+            message: `Organization activated. ${activatedCount} user(s) affected.`,
+            usersAffected: activatedCount
+        });
+    } catch (err) {
+        console.error('Activate organization error:', err);
+        return res.status(500).json({
+            error: 'Failed to activate organization',
+            message: err.message
+        });
+    }
+});
+
+// ===================================
 // DOCUMENT MANAGEMENT ENDPOINTS
 // ===================================
 
@@ -601,12 +886,11 @@ app.delete('/api/documents/:id', requireRole(['admin']), async (req, res) => {
 
 
 // ===================================
-// RESEARCHER ANALYTICS ENDPOINTS
+// RESEARCHER ANALYTICS ENDPOINTS (WITH ROLE PROTECTION)
 // ===================================
-// Add these endpoints to your server.js file
 
 // Get disease statistics for researchers (from consented users only)
-app.get('/api/researcher/disease-statistics', async (req, res) => {
+app.get('/api/researcher/disease-statistics', requireRole(['researcher', 'admin']), async (req, res) => {
   try {
     const { search } = req.query;
     
@@ -632,7 +916,7 @@ app.get('/api/researcher/disease-statistics', async (req, res) => {
 });
 
 // Get detailed analytics for a specific disease (from consented users only)
-app.get('/api/researcher/disease-analytics/:diseaseId', async (req, res) => {
+app.get('/api/researcher/disease-analytics/:diseaseId', requireRole(['researcher', 'admin']), async (req, res) => {
   try {
     const { diseaseId } = req.params;
     
@@ -658,7 +942,7 @@ app.get('/api/researcher/disease-analytics/:diseaseId', async (req, res) => {
 });
 
 // Get recent assessments for researcher dashboard
-app.get('/api/researcher/recent-assessments', async (req, res) => {
+app.get('/api/researcher/recent-assessments', requireRole(['researcher', 'admin']), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 6;
     const assessments = await riskAssessmentService.getRecentAssessmentsForResearcher(limit);
@@ -678,7 +962,7 @@ app.get('/api/researcher/recent-assessments', async (req, res) => {
 });
 
 // Get all assessments from consented users (for aggregate statistics)
-app.get('/api/researcher/consented-assessments', async (req, res) => {
+app.get('/api/researcher/consented-assessments', requireRole(['researcher', 'admin']), async (req, res) => {
   try {
     const assessments = await riskAssessmentService.getConsentedAssessments();
 
@@ -699,6 +983,86 @@ app.get('/api/researcher/consented-assessments', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`PrivaGene DB service running on http://localhost:${PORT}`);
 });
+
+// ===================================
+// RESEARCHER DATASETS ENDPOINTS
+// ===================================
+
+// Get anonymized assessments for datasets export (includes age data but no PII)
+app.get('/api/researcher/datasets/assessments', async (req, res) => {
+  try {
+    const assessments = await riskAssessmentService.getAnonymizedAssessmentsForDatasets();
+
+    return res.json({
+      success: true,
+      count: assessments.length,
+      assessments
+    });
+  } catch (err) {
+    console.error('Get dataset assessments error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve dataset assessments',
+      message: err.message
+    });
+  }
+});
+
+// Get complete disease statistics with all metrics for datasets
+app.get('/api/researcher/datasets/disease-stats', async (req, res) => {
+  try {
+    const stats = await riskAssessmentService.getCompleteDiseaseStatisticsForDatasets();
+
+    return res.json({
+      success: true,
+      count: stats.length,
+      diseases: stats
+    });
+  } catch (err) {
+    console.error('Get dataset disease stats error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve disease statistics',
+      message: err.message
+    });
+  }
+});
+
+// Get monthly trends for datasets
+app.get('/api/researcher/datasets/trends', async (req, res) => {
+  try {
+    const trends = await riskAssessmentService.getMonthlyTrendsForDatasets();
+
+    return res.json({
+      success: true,
+      count: trends.length,
+      trends
+    });
+  } catch (err) {
+    console.error('Get dataset trends error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve trends',
+      message: err.message
+    });
+  }
+});
+
+// Get aggregated statistics for datasets
+app.get('/api/researcher/datasets/aggregate-stats', async (req, res) => {
+  try {
+    const stats = await riskAssessmentService.getAggregateStatisticsForDatasets();
+
+    return res.json({
+      success: true,
+      statistics: stats
+    });
+  } catch (err) {
+    console.error('Get aggregate stats error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve aggregate statistics',
+      message: err.message
+    });
+  }
+});
+
 
 // ===================================
 // DISEASE CATEGORY ENDPOINTS

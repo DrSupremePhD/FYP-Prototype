@@ -219,6 +219,72 @@ INSERT OR IGNORE INTO users (
     email, 
     password, 
     role, 
+    organization_name,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'hospital_admin_1',
+    'cghadmin@sgh.com.sg',
+    'admin123',
+    'hospital_admin',
+    'City General Hospital',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    organization_name,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'hospital_admin_1',
+    'testcghadmin@sgh.com.sg',
+    'admin123',
+    'admin',
+    'City General Hospital',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    organization_name,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'hospital_admin_2',
+    'sghadmin@sgh.com.sg',
+    'admin123',
+    'hospital_admin',
+    'Singapore General Hospital',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
     first_name, 
     last_name, 
     organization_name,
@@ -236,6 +302,34 @@ INSERT OR IGNORE INTO users (
     'Hospital',
     'Singapore General Hospital',
     'LIC654321',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name, 
+    organization_name,
+    license_number,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'hospital_test_3',
+    'dr.wong@sgh.com.sg',
+    'hospital123',
+    'hospital',
+    'Bob',
+    'Wong',
+    'Singapore General Hospital',
+    'LIC654555',
     'active',
     0,
     datetime('now'),
