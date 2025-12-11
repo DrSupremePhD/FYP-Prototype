@@ -192,7 +192,8 @@ INSERT OR IGNORE INTO users (
     password, 
     role, 
     first_name, 
-    last_name, 
+    last_name,
+    phone,
     organization_name,
     license_number,
     status,
@@ -206,6 +207,7 @@ INSERT OR IGNORE INTO users (
     'hospital',
     'Test',
     'Hospital',
+    '+ 65 88886666',
     'City General Hospital',
     'LIC123456',
     'active',
@@ -236,27 +238,6 @@ INSERT OR IGNORE INTO users (
     datetime('now')
 );
 
-INSERT OR IGNORE INTO users (
-    id, 
-    email, 
-    password, 
-    role, 
-    organization_name,
-    status,
-    research_consent,
-    created_at,
-    updated_at
-) VALUES (
-    'hospital_admin_1',
-    'testcghadmin@sgh.com.sg',
-    'admin123',
-    'admin',
-    'City General Hospital',
-    'active',
-    0,
-    datetime('now'),
-    datetime('now')
-);
 
 INSERT OR IGNORE INTO users (
     id, 
@@ -286,7 +267,8 @@ INSERT OR IGNORE INTO users (
     password, 
     role, 
     first_name, 
-    last_name, 
+    last_name,
+    phone,
     organization_name,
     license_number,
     status,
@@ -300,6 +282,7 @@ INSERT OR IGNORE INTO users (
     'hospital',
     'Test',
     'Hospital',
+    '+65 91234567',
     'Singapore General Hospital',
     'LIC654321',
     'active',
@@ -314,7 +297,8 @@ INSERT OR IGNORE INTO users (
     password, 
     role, 
     first_name, 
-    last_name, 
+    last_name,
+    phone,
     organization_name,
     license_number,
     status,
@@ -328,6 +312,7 @@ INSERT OR IGNORE INTO users (
     'hospital',
     'Bob',
     'Wong',
+    '+65 92345678',
     'Singapore General Hospital',
     'LIC654555',
     'active',

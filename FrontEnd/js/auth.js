@@ -1,6 +1,5 @@
 // ===================================
 // PRIVAGENE - AUTHENTICATION
-// Mock authentication system
 // ===================================
 
 // BACKEND_INTEGRATION: Replace all authentication logic with JWT tokens or session-based auth from your backend
@@ -182,7 +181,8 @@ const Auth = {
         // If we're in pages directory (login.html, index.html, etc)
         if (currentPath.includes('/pages/') && !currentPath.includes('/pages/patient/') &&
             !currentPath.includes('/pages/hospital/') && !currentPath.includes('/pages/admin/') &&
-            !currentPath.includes('/pages/system-admin/') && !currentPath.includes('/pages/researcher/')) {
+            !currentPath.includes('/pages/system-admin/') && !currentPath.includes('/pages/researcher/') &&
+            !currentPath.includes('/pages/caregiver/')) {
             basePath = '';
         } else {
             // We're somewhere else, use relative path back to pages
@@ -195,7 +195,8 @@ const Auth = {
             hospital_admin: basePath + 'admin/dashboard.html',
             admin: basePath + 'admin/dashboard.html',
             system_admin: basePath + 'system-admin/dashboard.html',
-            researcher: basePath + 'researcher/dashboard.html'
+            researcher: basePath + 'researcher/dashboard.html',
+            caregiver: basePath + 'caregiver/dashboard.html'
         };
 
         const dashboardPath = dashboardPaths[user.role];

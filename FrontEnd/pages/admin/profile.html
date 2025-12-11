@@ -24,7 +24,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Admin</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fa9b9e979394ba9295898a938e9b96d4999597">[email&#160;protected]</a>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>admin@hospital.com
             </div>
         </div>
 
@@ -32,8 +32,10 @@
             <ul class="sidebar-menu">
                 <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
                             class="sidebar-link-icon">📊</span>Dashboard</a></li>
-                <li class="sidebar-item"><a href="gene-management.html" class="sidebar-link"><span
-                            class="sidebar-link-icon">🧬</span>Gene Database</a></li>
+                <li class="sidebar-item"><a href="disease-management.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🧬</span>Disease Database</a></li>
+                <li class="sidebar-item"><a href="register-hospital-specialist.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">🧑‍⚕️</span>Create Specialist Account</a></li>
                 <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
                             class="sidebar-link-icon">👤</span>Profile</a></li>
             </ul>
@@ -44,6 +46,7 @@
                     class="sidebar-link-icon">🚪</span>Logout</button></div>
     </aside>
 
+    <!-- Main Content -->
     <main class="main-with-sidebar">
         <div class="container-fluid">
             <div style="margin-bottom: var(--space-2xl);">
@@ -61,23 +64,23 @@
                     <form id="profileForm">
                         <div class="grid grid-cols-2 gap-lg">
                             <div class="form-group">
-                                <label class="form-label">First Name</label>
-                                <input type="text" id="firstName" class="form-control" required>
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" id="firstName" class="form-input" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Last Name</label>
-                                <input type="text" id="lastName" class="form-control" required>
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" id="lastName" class="form-input" required>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="email" class="form-control" disabled>
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" id="email" class="form-input" disabled>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Organization</label>
-                            <input type="text" id="organization" class="form-control">
+                            <label for="organization" class="form-label">Organization</label>
+                            <input type="text" id="organization" class="form-input">
                         </div>
 
                         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -93,33 +96,47 @@
                 <div class="card-body">
                     <form id="passwordForm">
                         <div class="form-group">
-                            <label class="form-label">Current Password</label>
-                            <input type="password" id="currentPassword" class="form-control" required>
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" id="currentPassword" class="form-input" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">New Password</label>
-                            <input type="password" id="newPassword" class="form-control" required>
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" id="newPassword" class="form-input" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Confirm New Password</label>
-                            <input type="password" id="confirmPassword" class="form-control" required>
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" class="form-input" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Update Password</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Danger Zone -->
-            <div class="card" style="border-color: var(--error-color);">
+            <!-- Deactivate Account -->
+            <div class="card" style="border: 1px solid var(--warning-color); margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h3 class="card-title" style="color: var(--warning-color);">Deactivate Account</h3>
+                </div>
+
+                <div style="padding: var(--space-lg);">
+                    <p class="text-secondary" style="margin-bottom: var(--space-md);">
+                        Temporarily deactivate your account. Your data will be preserved and you can reactivate later by contacting the system administrator.
+                    </p>
+                    <button onclick="deactivateAccount()" class="btn" style="background: var(--warning-color); color: white;">Deactivate Account</button>
+                </div>
+            </div>
+
+            <!-- Delete Account -->
+            <div class="card" style="border: 1px solid var(--error-color);">
                 <div class="card-header">
                     <h3 class="card-title" style="color: var(--error-color);">Delete Account</h3>
                 </div>
 
-                <div style="padding: var(--space-md);">
+                <div style="padding: var(--space-lg);">
                     <p class="text-secondary" style="margin-bottom: var(--space-md);">
                         Once you delete your account, all your data will be permanently removed. This cannot be undone.
                     </p>
-                    <button onclick="deleteAccount()" class="btn btn-error">Delete Account</button>
+                    <button onclick="deleteAccount()" class="btn btn-danger">Delete Account</button>
                 </div>
             </div>
         </div>
@@ -143,34 +160,52 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
-        // Load user data
-        document.getElementById('firstName').value = user.first_name || user.firstName || '';
-        document.getElementById('lastName').value = user.last_name || user.lastName || '';
-        document.getElementById('email').value = user.email;
-        document.getElementById('organization').value = user.organization_name || user.organization || '';
+        // Load user data (handle both camelCase and snake_case)
+        document.getElementById('firstName').value = user.firstName || user.first_name || '';
+        document.getElementById('lastName').value = user.lastName || user.last_name || '';
+        document.getElementById('email').value = user.email || '';
+        document.getElementById('organization').value = user.organizationName || user.organization_name || user.organization || '';
 
-        // Profile form
+        // Profile form submission
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const updates = {
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
-                organization: document.getElementById('organization').value.trim()
+                organizationName: document.getElementById('organization').value.trim()
             };
 
             UI.showLoading('Saving...');
             try {
-                await Auth.updateProfile(updates);
+                // Update user profile via API
+                const updatedUser = await API.updateUser(user.id, updates);
+                
+                // Update session storage with new data
+                const currentUser = Auth.getCurrentUser();
+                const mergedUser = { 
+                    ...currentUser, 
+                    firstName: updates.firstName,
+                    first_name: updates.firstName,
+                    lastName: updates.lastName,
+                    last_name: updates.lastName,
+                    organizationName: updates.organizationName,
+                    organization_name: updates.organizationName
+                };
+                sessionStorage.setItem('currentUser', JSON.stringify(mergedUser));
+                
+                // Update displayed user info
+                Navigation.displayUserInfo(mergedUser);
+                
+                UI.hideLoading();
                 UI.showAlert('Profile updated successfully', 'success');
             } catch (error) {
-                UI.showAlert(error.message, 'error');
-            } finally {
                 UI.hideLoading();
+                UI.showAlert(error.message || 'Failed to update profile', 'error');
             }
         });
 
-        // Password form
+        // Password form submission
         document.getElementById('passwordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -179,22 +214,56 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (newPassword !== confirmPassword) {
-                UI.showAlert('Passwords do not match', 'error');
+                UI.showAlert('New passwords do not match', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                UI.showAlert('Password must be at least 6 characters', 'error');
                 return;
             }
 
             UI.showLoading('Updating password...');
             try {
+                // Verify current password and update
                 await Auth.updatePassword(currentPassword, newPassword);
+                UI.hideLoading();
                 UI.showAlert('Password updated successfully', 'success');
                 document.getElementById('passwordForm').reset();
             } catch (error) {
-                UI.showAlert(error.message, 'error');
-            } finally {
                 UI.hideLoading();
+                UI.showAlert(error.message || 'Failed to update password', 'error');
             }
         });
 
+        // Deactivate account function
+        async function deactivateAccount() {
+            const confirmed = await UI.confirm(
+                'Are you sure you want to deactivate your account? You will be logged out and will need to contact the system administrator to reactivate your account.'
+            );
+
+            if (!confirmed) return;
+
+            UI.showLoading('Deactivating account...');
+
+            try {
+                // Update user status to 'inactive' via API
+                await API.updateUserStatus(user.id, 'inactive');
+                
+                UI.hideLoading();
+                UI.showAlert('Account deactivated. Redirecting...', 'info');
+
+                setTimeout(() => {
+                    Auth.logout();
+                }, 2000);
+
+            } catch (error) {
+                UI.hideLoading();
+                UI.showAlert(error.message || 'Failed to deactivate account', 'error');
+            }
+        }
+
+        // Delete account function
         async function deleteAccount() {
             const confirmed = await UI.confirm(
                 'Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.'
@@ -211,8 +280,9 @@
             UI.showLoading('Deleting account...');
 
             try {
-                // BACKEND_INTEGRATION: API call to delete account
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Delete user account via API
+                await API.deleteUser(user.id);
+                
                 UI.hideLoading();
                 UI.showAlert('Account deleted. Redirecting...', 'info');
 
@@ -222,9 +292,13 @@
 
             } catch (error) {
                 UI.hideLoading();
-                UI.showAlert('Failed to delete account', 'error');
+                UI.showAlert(error.message || 'Failed to delete account', 'error');
             }
         }
+
+        // Make functions globally available
+        window.deactivateAccount = deactivateAccount;
+        window.deleteAccount = deleteAccount;
     </script>
 </body>
 

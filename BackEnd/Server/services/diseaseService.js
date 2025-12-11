@@ -174,6 +174,28 @@ const diseaseService = {
   },
 
   /**
+   * Get all diseases created by hospital specialists belonging to a specific organization
+   * @param {string} organizationName - Organization name (e.g., "Singapore General Hospital")
+   * @returns {Promise<Array>} - Array of diseases with creator info
+   */
+  async getDiseasesByOrganization(organizationName) {
+    // Get all diseases where the creator (hospital_id) belongs to the given organization
+    const sql = `
+      SELECT d.*, 
+             u.first_name as creator_first_name, 
+             u.last_name as creator_last_name,
+             u.email as creator_email,
+             u.organization_name
+      FROM diseases d
+      INNER JOIN users u ON d.hospital_id = u.id
+      WHERE u.organization_name = ? AND u.role = 'hospital'
+      ORDER BY d.created_at DESC
+    `;
+    const diseases = await all(sql, [organizationName]);
+    return this.processDiseases(diseases);
+  },
+
+  /**
    * Get all diseases (admin view)
    * @returns {Promise<Array>} - Array of all diseases
    */
@@ -463,6 +485,36 @@ const diseaseService = {
     `;
     
     const diseases = await all(diseaseSql, [hospitalId, term, term, term, term]);
+    return this.processDiseases(diseases);
+  },
+
+  /**
+   * Search diseases by organization name
+   * @param {string} organizationName - Organization name
+   * @param {string} searchTerm - Search term
+   * @returns {Promise<Array>} - Matching diseases
+   */
+  async searchDiseasesByOrganization(organizationName, searchTerm) {
+    const term = `%${searchTerm}%`;
+    
+    const sql = `
+      SELECT DISTINCT d.*, 
+             u.first_name as creator_first_name, 
+             u.last_name as creator_last_name,
+             u.email as creator_email,
+             u.organization_name
+      FROM diseases d
+      INNER JOIN users u ON d.hospital_id = u.id
+      LEFT JOIN disease_genes dg ON d.id = dg.disease_id
+      WHERE u.organization_name = ? AND u.role = 'hospital'
+        AND (d.disease_name LIKE ? 
+             OR d.disease_code LIKE ? 
+             OR d.description LIKE ?
+             OR dg.gene_symbol LIKE ?)
+      ORDER BY d.disease_name ASC
+    `;
+    
+    const diseases = await all(sql, [organizationName, term, term, term, term]);
     return this.processDiseases(diseases);
   }
 };

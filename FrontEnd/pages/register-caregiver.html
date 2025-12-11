@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Registration - PrivaGene</title>
+    <title>Caregiver Registration - PrivaGene</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,15 +14,6 @@
     <link rel="stylesheet" href="../css/components.css">
 
     <style>
-        .register-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-            padding: var(--space-xl);
-        }
-
         .register-box {
             width: 100%;
             max-width: 600px;
@@ -46,23 +37,99 @@
             width: 0%;
             transition: all var(--transition-base);
         }
+
+        .info-box {
+            background: linear-gradient(135deg, hsla(180, 70%, 50%, 0.1), hsla(199, 89%, 48%, 0.1));
+            border: 1px solid var(--secondary-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .info-box h4 {
+            color: var(--secondary-color);
+            font-size: var(--text-base);
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .info-box ul {
+            margin: 0;
+            padding-left: var(--space-xl);
+            color: var(--text-secondary);
+        }
+
+        .info-box li {
+            margin-bottom: var(--space-xs);
+        }
+
+        .pending-invitations {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .pending-invitations h4 {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .invitation-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-xs);
+        }
+
+        .invitation-item:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 
 <body>
-    <div class="register-container">
-        <div class="register-box fade-in">
+    <div class="register-container fade-in"
+        style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); padding: var(--space-xl);">
+        <div class="card-glass" style="padding: var(--space-2xl);">
             <a href="role-selection.html" class="back-link">← Choose Different Role</a>
-            <br><br/> 
 
-            <div class="card-glass" style="padding: var(--space-2xl);">
-                <div class="register-header">
-                    <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">👤</div>
-                    <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
-                        Patient Registration
-                    </h1>
-                    <p class="text-secondary">Create your account to start your genetic health journey</p>
+            <div class="register-header">
+                <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">👨‍👩‍👧</div>
+                <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                    Caregiver Registration
+                </h1>
+                <p class="text-secondary">Create an account to support your loved ones' health journey</p>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <h4>👁️ What Caregivers Can Do</h4>
+                <ul>
+                    <li>View risk assessment results for patients who grant you access</li>
+                    <li>Track assessment history over time</li>
+                    <li>Help loved ones understand their results</li>
+                </ul>
+                <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); color: var(--text-tertiary);">
+                    <strong>Note:</strong> You will never have access to raw genetic data. Privacy is our priority.
+                </p>
+            </div>
+
+            <!-- Pending Invitations Notice -->
+            <div id="pendingInvitationsSection" style="display: none;">
+                <div class="pending-invitations">
+                    <h4>📨 You have pending invitations from:</h4>
+                    <div id="pendingInvitationsList"></div>
                 </div>
+            </div>
+
+            <div>
                 <form id="register-form">
                     <div class="grid grid-cols-2 gap-lg">
                         <div class="form-group">
@@ -79,17 +146,13 @@
                     <div class="form-group">
                         <label for="email" class="form-label form-label-required">Email Address</label>
                         <input type="email" id="email" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="dateOfBirth" class="form-label form-label-required">Date of Birth</label>
-                        <input type="date" id="dateOfBirth" class="form-input" required>
+                        <span class="form-hint">Use the same email that your family member used to invite you</span>
                     </div>
 
                     <div class="form-group">
                         <label for="phone" class="form-label">Phone Number</label>
                         <input type="tel" id="phone" class="form-input" placeholder="+65 9223 4567">
-                        <span class="form-hint">Optional, for appointment reminders</span>
+                        <span class="form-hint">Optional, for notifications</span>
                     </div>
 
                     <div class="form-group">
@@ -119,15 +182,16 @@
 
                     <div class="form-group">
                         <label class="form-checkbox">
-                            <input type="checkbox" id="dataSharing">
+                            <input type="checkbox" id="caregiverAgreement" required>
                             <span class="text-sm">
-                                I consent to share anonymized data for research purposes
+                                I understand that I will only have access to information that patients explicitly share with me,
+                                and I agree to respect their privacy
                             </span>
                         </label>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block btn-lg">
-                        Create Account
+                        Create Caregiver Account
                     </button>
                 </form>
 
@@ -149,16 +213,27 @@
 
     <script>
         const form = document.getElementById('register-form');
+        const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const confirmPasswordInput = document.getElementById('confirmPassword');
         const passwordStrengthBar = document.getElementById('passwordStrengthBar');
         const passwordHint = document.getElementById('passwordHint');
 
+        // Check for pending invitations when email is entered
+        // TODO: Implement backend API for family access invitations
+        emailInput.addEventListener('blur', checkPendingInvitations);
+
+        function checkPendingInvitations() {
+            // Pending invitations feature requires backend implementation
+            // For now, hide the section
+            const section = document.getElementById('pendingInvitationsSection');
+            section.style.display = 'none';
+        }
+
         // Password strength indicator
         passwordInput.addEventListener('input', () => {
             const password = passwordInput.value;
             let strength = 0;
-            let hints = [];
 
             if (password.length >= 8) strength += 25;
             if (password.match(/[a-z]/)) strength += 25;
@@ -197,20 +272,19 @@
                 UI.clearFormError(input);
             });
 
-            // Get values - NOW INCLUDES researchConsent
+            // Get values
             const formData = {
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
                 email: document.getElementById('email').value.trim(),
-                dateOfBirth: document.getElementById('dateOfBirth').value,
                 phone: document.getElementById('phone').value.trim(),
                 password: passwordInput.value,
-                role: 'patient',
-                researchConsent: document.getElementById('dataSharing').checked  // NEW: Capture consent checkbox
+                role: 'caregiver'
             };
 
             const confirmPassword = confirmPasswordInput.value;
             const termsAccepted = document.getElementById('terms').checked;
+            const caregiverAgreement = document.getElementById('caregiverAgreement').checked;
 
             // Validate
             let isValid = true;
@@ -230,11 +304,6 @@
                 isValid = false;
             }
 
-            if (!formData.dateOfBirth) {
-                UI.setFormError(document.getElementById('dateOfBirth'), 'Date of birth is required');
-                isValid = false;
-            }
-
             if (formData.password.length < 8) {
                 UI.setFormError(passwordInput, 'Password must be at least 8 characters');
                 isValid = false;
@@ -250,13 +319,18 @@
                 isValid = false;
             }
 
+            if (!caregiverAgreement) {
+                UI.showAlert('You must agree to respect patient privacy', 'error');
+                isValid = false;
+            }
+
             if (!isValid) return;
 
             // Show loading
-            UI.showLoading('Creating your account...');
+            UI.showLoading('Creating your caregiver account...');
 
             try {
-                // BACKEND_INTEGRATION: Auth.register() will call your backend API
+                // Register the caregiver via backend API
                 const user = await Auth.register(formData);
 
                 UI.hideLoading();
@@ -264,13 +338,13 @@
 
                 setTimeout(() => {
                     Auth.redirectToDashboard(user);
-                }, 1500);
+                }, 2000);
 
             } catch (error) {
                 UI.hideLoading();
                 UI.showAlert(error.message || 'Registration failed. Please try again.', 'error');
 
-                if (error.message.includes('email')) {
+                if (error.message && error.message.includes('email')) {
                     UI.setFormError(document.getElementById('email'), error.message);
                 }
             }

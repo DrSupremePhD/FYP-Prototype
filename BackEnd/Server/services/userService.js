@@ -71,6 +71,35 @@ async function getUserById(id) {
     return user;
 }
 
+// Check if email already exists
+async function emailExists(email) {
+    const sql = 'SELECT id FROM users WHERE email = ?';
+    const user = await get(sql, [email]);
+    return !!user;
+}
+
+// Check if license number already exists
+async function licenseNumberExists(licenseNumber) {
+    const sql = 'SELECT id FROM users WHERE license_number = ?';
+    const user = await get(sql, [licenseNumber]);
+    return !!user;
+}
+
+// Get all hospital specialists (role = 'hospital') by organization name
+async function getHospitalSpecialistsByOrganization(organizationName) {
+    const sql = `
+        SELECT * FROM users 
+        WHERE role = 'hospital' AND organization_name = ?
+        ORDER BY created_at DESC
+    `;
+    const users = await all(sql, [organizationName]);
+    
+    return users.map(user => ({
+        ...user,
+        research_consent: user.research_consent === 1
+    }));
+}
+
 // Update user
 async function updateUser(id, updates) {
     const allowedFields = [
@@ -182,11 +211,14 @@ module.exports = {
     createUser,
     getUserByEmail,
     getUserById,
+    emailExists,                           // NEW export
+    licenseNumberExists,                   // NEW export
+    getHospitalSpecialistsByOrganization,  // NEW export
     updateUser,
     deleteUser,
     getUsers,
-    getConsentedUsers,  // NEW export
+    getConsentedUsers,
     changePassword,
     updateUserStatus,
-    updateResearchConsent  // NEW export
+    updateResearchConsent
 };

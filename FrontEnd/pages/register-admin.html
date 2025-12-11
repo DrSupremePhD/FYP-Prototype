@@ -16,15 +16,16 @@
         style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); padding: var(--space-xl);">
         <div style="width: 100%; max-width: 600px;">
             <a href="role-selection.html" class="back-link">← Choose Different Role</a>
+            <br><br/>
 
-            <div style="text-align: center; margin-bottom: var(--space-2xl);">
-                <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">⚙️</div>
-                <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">Hospital Admin
-                    Registration</h1>
-                <p class="text-secondary">Manage your organization's genetic database</p>
-            </div>
 
-            <div class="card-glass">
+            <div class="card-glass" style="padding: var(--space-2xl);">
+                <div style="text-align: center; margin-bottom: var(--space-2xl);">
+                    <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">⚙️</div>
+                    <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">Hospital Admin
+                        Registration</h1>
+                    <p class="text-secondary">Manage your organization's genetic database</p>
+                </div>
                 <form id="register-form">
                     <div class="grid grid-cols-2 gap-lg">
                         <div class="form-group">
@@ -92,10 +93,10 @@
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
                 email: document.getElementById('email').value.trim(),
-                organization: document.getElementById('organization').value.trim(),
+                organizationName: document.getElementById('organization').value.trim(),  // Changed from 'organization' to 'organizationName'
                 password: document.getElementById('password').value,
-                role: 'admin',
-                status: 'pending_approval' // Hospital admins need approval
+                role: 'hospital_admin',  // Changed from 'admin' to 'hospital_admin' to match your role schema
+                status: 'pending_approval'
             };
 
             if (formData.password !== document.getElementById('confirmPassword').value) {

@@ -882,8 +882,269 @@ app.delete('/api/documents/:id', requireRole(['admin']), async (req, res) => {
 });
 
 
+// ===================================
+// HOSPITAL SPECIALIST MANAGEMENT ENDPOINTS
+// ===================================
 
+// Create hospital specialist account (hospital_admin only)
+app.post('/api/users/create-hospital-specialist', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  try {
+    const { 
+      email, 
+      password, 
+      firstName, 
+      lastName, 
+      phone, 
+      licenseNumber, 
+      organizationName 
+    } = req.body;
 
+    // Validate required fields
+    if (!email || !password || !firstName || !lastName || !phone || !licenseNumber || !organizationName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        required: ['email', 'password', 'firstName', 'lastName', 'phone', 'licenseNumber', 'organizationName']
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters'
+      });
+    }
+
+    // Check if email already exists
+    const emailExists = await userService.emailExists(email);
+    if (emailExists) {
+      return res.status(409).json({
+        success: false,
+        error: 'Email already registered',
+        message: 'An account with this email address already exists'
+      });
+    }
+
+    // Check if license number already exists
+    const licenseExists = await userService.licenseNumberExists(licenseNumber);
+    if (licenseExists) {
+      return res.status(409).json({
+        success: false,
+        error: 'License number already registered',
+        message: 'An account with this license number already exists'
+      });
+    }
+
+    // Create the hospital specialist user
+    const userData = {
+      email,
+      password,
+      role: 'hospital',  // This is the role for hospital specialists
+      firstName,
+      lastName,
+      phone,
+      licenseNumber,
+      organizationName,
+      status: 'active',  // Specialists created by admin are active immediately
+      researchConsent: false
+    };
+
+    const user = await userService.createUser(userData);
+
+    // Log the creation
+    await auditService.createLog({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'hospital_specialist_created',
+      resourceType: 'user',
+      resourceId: user.id,
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { 
+        organizationName,
+        createdByRole: 'hospital_admin',
+        message: `Hospital specialist account created for ${firstName} ${lastName}`
+      }
+    });
+
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName,
+        lastName,
+        organizationName,
+        status: user.status
+      },
+      message: 'Hospital specialist account created successfully'
+    });
+
+  } catch (err) {
+    console.error('Create hospital specialist error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to create hospital specialist account',
+      message: err.message
+    });
+  }
+});
+
+// Get hospital specialists by organization name
+app.get('/api/users/hospital-specialists/:organizationName', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+
+    if (!organizationName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization name is required'
+      });
+    }
+
+    const specialists = await userService.getHospitalSpecialistsByOrganization(
+      decodeURIComponent(organizationName)
+    );
+
+    // Remove passwords from response
+    const specialistsWithoutPasswords = specialists.map(({ password: _, ...specialist }) => specialist);
+
+    return res.json({
+      success: true,
+      count: specialistsWithoutPasswords.length,
+      specialists: specialistsWithoutPasswords
+    });
+
+  } catch (err) {
+    console.error('Get hospital specialists error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve hospital specialists',
+      message: err.message
+    });
+  }
+});
+
+// Check if email exists (utility endpoint)
+app.get('/api/users/check-email/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const exists = await userService.emailExists(decodeURIComponent(email));
+
+    return res.json({
+      success: true,
+      exists
+    });
+  } catch (err) {
+    console.error('Check email error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check email',
+      message: err.message
+    });
+  }
+});
+
+// Check if license number exists (utility endpoint)
+app.get('/api/users/check-license/:licenseNumber', async (req, res) => {
+  try {
+    const { licenseNumber } = req.params;
+    const exists = await userService.licenseNumberExists(decodeURIComponent(licenseNumber));
+
+    return res.json({
+      success: true,
+      exists
+    });
+  } catch (err) {
+    console.error('Check license error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check license number',
+      message: err.message
+    });
+  }
+});
+
+// ===================================
+// DISEASE BY ORGANIZATION ENDPOINTS
+// ===================================
+
+// Get all diseases for an organization (for hospital_admin view)
+// This fetches all diseases created by hospital specialists belonging to the same organization
+app.get('/api/diseases/by-organization/:organizationName', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+
+    if (!organizationName) {
+      return res.status(400).json({
+        error: 'Organization name is required'
+      });
+    }
+
+    const diseases = await diseaseService.getDiseasesByOrganization(
+      decodeURIComponent(organizationName)
+    );
+
+    return res.json({
+      success: true,
+      count: diseases.length,
+      diseases
+    });
+  } catch (err) {
+    console.error('Get diseases by organization error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve diseases',
+      message: err.message
+    });
+  }
+});
+
+// Search diseases within an organization
+app.get('/api/diseases/by-organization/:organizationName/search', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+    const { q } = req.query;
+
+    if (!organizationName) {
+      return res.status(400).json({
+        error: 'Organization name is required'
+      });
+    }
+
+    let diseases;
+    if (!q) {
+      // If no search term, return all diseases for the organization
+      diseases = await diseaseService.getDiseasesByOrganization(
+        decodeURIComponent(organizationName)
+      );
+    } else {
+      diseases = await diseaseService.searchDiseasesByOrganization(
+        decodeURIComponent(organizationName),
+        q
+      );
+    }
+
+    return res.json({
+      success: true,
+      count: diseases.length,
+      diseases
+    });
+  } catch (err) {
+    console.error('Search diseases by organization error:', err);
+    return res.status(500).json({
+      error: 'Failed to search diseases',
+      message: err.message
+    });
+  }
+});
 
 // ===================================
 // RESEARCHER ANALYTICS ENDPOINTS (WITH ROLE PROTECTION)

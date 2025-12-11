@@ -649,6 +649,348 @@ const BackendAPI = {
     },
 
     // ===================================
+    // HOSPITAL SPECIALIST MANAGEMENT API FUNCTIONS
+    // ===================================
+
+    /**
+     * Create a hospital specialist account (hospital_admin only)
+     * @param {Object} data - Specialist data
+     * @param {string} data.email - Email address
+     * @param {string} data.password - Password
+     * @param {string} data.firstName - First name
+     * @param {string} data.lastName - Last name
+     * @param {string} data.phone - Phone number
+     * @param {string} data.licenseNumber - Medical license number
+     * @param {string} data.organizationName - Organization name (auto-filled from admin)
+     * @returns {Promise<Object>} Created user object
+     */
+    async createHospitalSpecialist(data) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, cannot create hospital specialist');
+            return { success: false, message: 'Backend not available' };
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/users/create-hospital-specialist`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'hospital_admin'
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    password: data.password,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    phone: data.phone,
+                    licenseNumber: data.licenseNumber,
+                    organizationName: data.organizationName
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    message: result.message || result.error || 'Failed to create specialist account'
+                };
+            }
+
+            return {
+                success: true,
+                user: result.user,
+                message: result.message
+            };
+        } catch (error) {
+            console.error('Error creating hospital specialist:', error);
+            return {
+                success: false,
+                message: error.message || 'An error occurred while creating the account'
+            };
+        }
+    },
+
+    /**
+     * Get hospital specialists by organization name
+     * @param {string} organizationName - The organization name to filter by
+     * @returns {Promise<Array>} Array of specialists
+     */
+    async getHospitalSpecialists(organizationName) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty specialists list');
+            return [];
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(
+                `${this.config.baseURL}/api/users/hospital-specialists/${encodeURIComponent(organizationName)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Role': user?.role || 'hospital_admin'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch hospital specialists');
+            }
+
+            const data = await response.json();
+            return data.specialists || [];
+        } catch (error) {
+            console.error('Error fetching hospital specialists:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get hospital admin dashboard stats
+     * @returns {Promise<Object>} Dashboard statistics
+     */
+    async getHospitalAdminStats() {
+        if (!this.config.enabled) {
+            return {
+                diseaseCount: 0,
+                specialistCount: 0,
+                totalGenes: 0,
+                totalAssessments: 0
+            };
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const organizationName = user?.organizationName || user?.organization_name;
+
+            // Get disease categories for this hospital
+            const categories = await this.getDiseaseCategories();
+            const hospitalCategories = categories.filter(c => 
+                c.hospitalName === organizationName || c.hospital_name === organizationName
+            );
+
+            // Get specialists for this organization
+            const specialists = await this.getHospitalSpecialists(organizationName);
+
+            // Count total genes from disease categories
+            let totalGenes = 0;
+            hospitalCategories.forEach(cat => {
+                totalGenes += cat.geneCount || cat.gene_count || 0;
+            });
+
+            // Get assessments (if you have an endpoint for this)
+            let totalAssessments = 0;
+            try {
+                const assessments = await this.getRiskAssessmentsByHospital(organizationName);
+                totalAssessments = assessments?.length || 0;
+            } catch (e) {
+                // Assessment endpoint might not exist yet
+                totalAssessments = 0;
+            }
+
+            return {
+                diseaseCount: hospitalCategories.length,
+                specialistCount: specialists.length,
+                totalGenes: totalGenes,
+                totalAssessments: totalAssessments
+            };
+        } catch (error) {
+            console.error('Error fetching hospital admin stats:', error);
+            return {
+                diseaseCount: 0,
+                specialistCount: 0,
+                totalGenes: 0,
+                totalAssessments: 0
+            };
+        }
+    },
+
+    /**
+     * Check if email already exists
+     * @param {string} email - Email to check
+     * @returns {Promise<boolean>} True if exists
+     */
+    async checkEmailExists(email) {
+        if (!this.config.enabled) {
+            return false;
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/users/check-email/${encodeURIComponent(email)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to check email');
+            }
+
+            const data = await response.json();
+            return data.exists || false;
+        } catch (error) {
+            console.error('Error checking email:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Check if license number already exists
+     * @param {string} licenseNumber - License number to check
+     * @returns {Promise<boolean>} True if exists
+     */
+    async checkLicenseExists(licenseNumber) {
+        if (!this.config.enabled) {
+            return false;
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/users/check-license/${encodeURIComponent(licenseNumber)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to check license');
+            }
+
+            const data = await response.json();
+            return data.exists || false;
+        } catch (error) {
+            console.error('Error checking license:', error);
+            return false;
+        }
+    },
+
+    // ===================================
+    // DISEASE BY ORGANIZATION API FUNCTIONS
+    // ===================================
+
+    /**
+     * Get all diseases created by hospital specialists in a specific organization
+     * @param {string} organizationName - The organization name to filter by
+     * @returns {Promise<Array>} Array of diseases with creator info
+     */
+    async getDiseasesByOrganization(organizationName) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty diseases list');
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/diseases/by-organization/${encodeURIComponent(organizationName)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch diseases by organization');
+            }
+
+            const data = await response.json();
+            
+            // Normalize the response for frontend use
+            const diseases = (data.diseases || []).map(d => ({
+                id: d.id,
+                diseaseName: d.disease_name,
+                diseaseCode: d.disease_code,
+                description: d.description,
+                constant: d.constant,
+                geneSymbols: d.gene_symbols || [],
+                geneCount: (d.gene_symbols || []).length,
+                creatorFirstName: d.creator_first_name,
+                creatorLastName: d.creator_last_name,
+                creatorEmail: d.creator_email,
+                creatorName: `${d.creator_first_name || ''} ${d.creator_last_name || ''}`.trim() || 'Unknown',
+                organizationName: d.organization_name,
+                hospitalId: d.hospital_id,
+                createdAt: d.created_at,
+                updatedAt: d.updated_at
+            }));
+
+            return diseases;
+        } catch (error) {
+            console.error('Error fetching diseases by organization:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Search diseases within an organization
+     * @param {string} organizationName - The organization name
+     * @param {string} searchTerm - Search term
+     * @returns {Promise<Array>} Array of matching diseases
+     */
+    async searchDiseasesByOrganization(organizationName, searchTerm) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty diseases list');
+            return [];
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/diseases/by-organization/${encodeURIComponent(organizationName)}/search`;
+            
+            if (searchTerm) {
+                url += `?q=${encodeURIComponent(searchTerm)}`;
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to search diseases');
+            }
+
+            const data = await response.json();
+            
+            // Normalize the response for frontend use
+            const diseases = (data.diseases || []).map(d => ({
+                id: d.id,
+                diseaseName: d.disease_name,
+                diseaseCode: d.disease_code,
+                description: d.description,
+                constant: d.constant,
+                geneSymbols: d.gene_symbols || [],
+                geneCount: (d.gene_symbols || []).length,
+                creatorFirstName: d.creator_first_name,
+                creatorLastName: d.creator_last_name,
+                creatorEmail: d.creator_email,
+                creatorName: `${d.creator_first_name || ''} ${d.creator_last_name || ''}`.trim() || 'Unknown',
+                organizationName: d.organization_name,
+                hospitalId: d.hospital_id,
+                createdAt: d.created_at,
+                updatedAt: d.updated_at
+            }));
+
+            return diseases;
+        } catch (error) {
+            console.error('Error searching diseases by organization:', error);
+            return [];
+        }
+    },
+
+    // ===================================
     // DISEASE MANAGEMENT (Hospital)
     // ===================================
 

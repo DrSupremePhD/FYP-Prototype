@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient View - PrivaGene Caregiver</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+
+    <style>
+        .patient-header-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            color: white;
+            margin-bottom: var(--space-2xl);
+            display: flex;
+            align-items: center;
+            gap: var(--space-xl);
+        }
+
+        .patient-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-3xl);
+            font-weight: 600;
+        }
+
+        .patient-header-info h1 {
+            color: white;
+            font-size: var(--text-3xl);
+            margin-bottom: var(--space-xs);
+        }
+
+        .patient-header-info p {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+        }
+
+        .read-only-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: var(--text-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+
+        .risk-gauge {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto var(--space-lg);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .risk-gauge-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(var(--success-color) 0deg 108deg,
+                    var(--warning-color) 108deg 252deg,
+                    var(--error-color) 252deg 360deg);
+            padding: 10px;
+        }
+
+        .risk-gauge-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .risk-percentage {
+            font-size: var(--text-4xl);
+            font-weight: 700;
+        }
+
+        .assessment-timeline {
+            position: relative;
+            padding-left: var(--space-xl);
+        }
+
+        .assessment-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-light);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: var(--space-xl);
+            cursor: pointer;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: calc(-1 * var(--space-xl) + 4px);
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: 2px solid var(--bg-primary);
+        }
+
+        .timeline-content {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all var(--transition-fast);
+        }
+
+        .timeline-content:hover {
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .timeline-date {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .timeline-diseases {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+            margin-top: var(--space-sm);
+        }
+
+        .disease-chip {
+            background: var(--bg-secondary);
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+        }
+
+        .privacy-notice-card {
+            background: hsla(199, 89%, 48%, 0.1);
+            border: 1px solid var(--info-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: var(--space-lg);
+            transition: color var(--transition-fast);
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .no-data-state {
+            text-align: center;
+            padding: var(--space-3xl);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../../index.html"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
+            <div style="margin-top: var(--space-sm);">
+                <span class="badge badge-info">Caregiver</span>
+            </div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="dashboard.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="my-patients.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👥</span>
+                        My Patients
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="profile.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👤</span>
+                        Profile
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;">
+                <span class="sidebar-link-icon">🚪</span>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-with-sidebar">
+        <div class="container-fluid">
+            <!-- Back Button -->
+            <a href="dashboard.html" class="back-btn">
+                ← Back to Dashboard
+            </a>
+
+            <!-- Patient Header -->
+            <div class="patient-header-card" id="patientHeader">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Privacy Notice -->
+            <div class="privacy-notice-card">
+                <div style="font-size: var(--text-xl);">👁️</div>
+                <div>
+                    <strong>View-Only Access</strong>
+                    <p class="text-secondary" style="margin: var(--space-xs) 0 0 0; font-size: var(--text-sm);">
+                        You can view risk assessment results only. Raw genetic data is protected and not visible to caregivers.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-lg">
+                <!-- Latest Risk Overview -->
+                <div class="card" style="grid-column: span 1;">
+                    <div class="card-header">
+                        <h3 class="card-title">Latest Risk Score</h3>
+                    </div>
+                    <div id="latestRisk" class="text-center">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Assessment History -->
+                <div class="card" style="grid-column: span 2;">
+                    <div class="card-header">
+                        <h3 class="card-title">Assessment History</h3>
+                    </div>
+                    <div id="assessmentHistory">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Results Section -->
+            <div class="card" style="margin-top: var(--space-2xl);" id="detailedResultsCard">
+                <div class="card-header">
+                    <h3 class="card-title">Latest Assessment Details</h3>
+                    <p class="card-subtitle" id="assessmentDate"></p>
+                </div>
+                <div id="detailedResults">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/seed-data.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/api-mock.js"></script>
+    <script src="../../js/navigation.js"></script>
+
+    <script>
+        // Require caregiver authentication
+        Auth.requireRole('caregiver');
+
+        const user = Auth.getCurrentUser();
+
+        // Display user info
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        // Logout handler
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            Auth.logout();
+        });
+
+        // Get patient ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const patientId = params.get('patientId');
+
+        if (!patientId) {
+            UI.showAlert('No patient specified', 'error');
+            setTimeout(() => window.location.href = 'dashboard.html', 2000);
+        }
+
+        // Verify caregiver has access to this patient
+        function verifyAccess() {
+            const familyAccess = Storage.get('family_access') || [];
+            const hasAccess = familyAccess.some(fa => 
+                fa.patientId === patientId &&
+                (fa.caregiverId === user.id || fa.caregiverEmail.toLowerCase() === user.email.toLowerCase()) &&
+                fa.status === 'active'
+            );
+
+            if (!hasAccess) {
+                UI.showAlert('You do not have access to this patient', 'error');
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
+                return false;
+            }
+            return true;
+        }
+
+        // Load patient data
+        function loadPatientData() {
+            if (!verifyAccess()) return;
+
+            const users = Storage.get('users') || [];
+            const assessments = Storage.get('risk_assessments') || [];
+            const familyAccess = Storage.get('family_access') || [];
+
+            // Get patient info
+            const patient = users.find(u => u.id === patientId);
+            if (!patient) {
+                UI.showAlert('Patient not found', 'error');
+                return;
+            }
+
+            // Get access record for relationship info
+            const accessRecord = familyAccess.find(fa => 
+                fa.patientId === patientId &&
+                (fa.caregiverId === user.id || fa.caregiverEmail.toLowerCase() === user.email.toLowerCase())
+            );
+
+            // Display patient header
+            const initials = `${patient.firstName[0]}${patient.lastName[0]}`.toUpperCase();
+            const relationshipLabel = {
+                'spouse': 'Spouse',
+                'child': 'Your Parent',
+                'parent': 'Your Child',
+                'sibling': 'Your Sibling',
+                'grandchild': 'Your Grandchild',
+                'other': 'Family Member',
+                'caregiver': 'Your Patient'
+            }[accessRecord?.relationship] || 'Family Member';
+
+            document.getElementById('patientHeader').innerHTML = `
+                <div class="patient-avatar-large">${initials}</div>
+                <div class="patient-header-info">
+                    <h1>${patient.firstName} ${patient.lastName}</h1>
+                    <p>${relationshipLabel}</p>
+                </div>
+                <div style="margin-left: auto;">
+                    <span class="read-only-badge">👁️ View Only</span>
+                </div>
+            `;
+
+            // Get patient's assessments
+            const patientAssessments = assessments
+                .filter(a => a.userId === patientId)
+                .sort((a, b) => new Date(b.createdAt || b.computedAt) - new Date(a.createdAt || a.computedAt));
+
+            // Display latest risk
+            displayLatestRisk(patientAssessments[0]);
+
+            // Display assessment history
+            displayAssessmentHistory(patientAssessments);
+
+            // Display detailed results for latest assessment
+            if (patientAssessments[0]) {
+                displayDetailedResults(patientAssessments[0]);
+            }
+        }
+
+        function displayLatestRisk(assessment) {
+            const container = document.getElementById('latestRisk');
+
+            if (!assessment) {
+                container.innerHTML = `
+                    <div class="no-data-state">
+                        <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">📊</div>
+                        <p class="text-secondary">No assessments yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const risk = assessment.overallRisk;
+            let riskColor, riskLevel;
+
+            if (risk < 30) {
+                riskColor = 'var(--success-color)';
+                riskLevel = 'Low Risk';
+            } else if (risk < 70) {
+                riskColor = 'var(--warning-color)';
+                riskLevel = 'Medium Risk';
+            } else {
+                riskColor = 'var(--error-color)';
+                riskLevel = 'High Risk';
+            }
+
+            container.innerHTML = `
+                <div class="risk-gauge">
+                    <div class="risk-gauge-circle">
+                        <div class="risk-gauge-inner">
+                            <div class="risk-percentage" style="color: ${riskColor};">${risk}%</div>
+                            <div class="text-secondary text-sm">${riskLevel}</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-secondary text-sm">
+                    Last updated: ${UI.formatDate(assessment.createdAt || assessment.computedAt)}
+                </p>
+            `;
+        }
+
+        function displayAssessmentHistory(assessments) {
+            const container = document.getElementById('assessmentHistory');
+            const diseaseCategories = Storage.get('diseaseCategories') || [];
+
+            if (assessments.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data-state">
+                        <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">📋</div>
+                        <p class="text-secondary">No assessment history available</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Helper to get display name
+            function getCategoryDisplayName(categoryId) {
+                const category = diseaseCategories.find(c => c.id === categoryId);
+                if (category) return category.name;
+                return categoryId.replace(/^cat_/, '').replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            }
+
+            container.innerHTML = `
+                <div class="assessment-timeline">
+                    ${assessments.slice(0, 5).map((assessment, index) => {
+                        const risk = assessment.overallRisk;
+                        let riskColor;
+                        if (risk < 30) riskColor = 'var(--success-color)';
+                        else if (risk < 70) riskColor = 'var(--warning-color)';
+                        else riskColor = 'var(--error-color)';
+
+                        const categories = assessment.results
+                            .map(r => getCategoryDisplayName(r.category))
+                            .slice(0, 3);
+
+                        return `
+                            <div class="timeline-item" onclick="showAssessmentDetails('${assessment.id}')">
+                                <div class="timeline-dot" style="background: ${riskColor};"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">${UI.formatDateTime(assessment.createdAt || assessment.computedAt)}</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight: 600;">Overall Risk</span>
+                                        <span style="font-size: var(--text-xl); font-weight: 700; color: ${riskColor};">${risk}%</span>
+                                    </div>
+                                    <div class="timeline-diseases">
+                                        ${categories.map(cat => `<span class="disease-chip">${cat}</span>`).join('')}
+                                        ${assessment.results.length > 3 ? `<span class="disease-chip">+${assessment.results.length - 3} more</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                ${assessments.length > 5 ? `
+                    <p class="text-secondary text-sm text-center" style="margin-top: var(--space-lg);">
+                        Showing latest 5 of ${assessments.length} assessments
+                    </p>
+                ` : ''}
+            `;
+        }
+
+        function displayDetailedResults(assessment) {
+            const container = document.getElementById('detailedResults');
+            const dateEl = document.getElementById('assessmentDate');
+            const diseaseCategories = Storage.get('diseaseCategories') || [];
+
+            dateEl.textContent = `Computed on ${UI.formatDateTime(assessment.createdAt || assessment.computedAt)}`;
+
+            // Helper to get display name
+            function getCategoryDisplayName(categoryId) {
+                const category = diseaseCategories.find(c => c.id === categoryId);
+                if (category) return category.name;
+                return categoryId.replace(/^cat_/, '').replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            }
+
+            container.innerHTML = assessment.results.map(result => {
+                const categoryName = getCategoryDisplayName(result.category);
+                const percentage = result.riskPercentage;
+                const level = result.riskLevel;
+
+                let color;
+                if (level === 'low') color = 'var(--success-color)';
+                else if (level === 'moderate') color = 'var(--warning-color)';
+                else color = 'var(--error-color)';
+
+                return `
+                    <div style="padding: var(--space-lg); border-bottom: 1px solid var(--border-light);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                            <div>
+                                <h4 style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
+                                    ${categoryName}
+                                </h4>
+                                <div class="text-secondary text-sm">
+                                    Genes involved: ${result.affectedGenes ? result.affectedGenes.length : 'N/A'}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: var(--text-3xl); font-weight: 700; color: ${color};">
+                                    ${percentage}%
+                                </div>
+                                <div class="risk-indicator risk-${level === 'moderate' ? 'medium' : level}" style="margin-top: var(--space-xs);">
+                                    ${level.toUpperCase()} RISK
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: ${percentage}%; background: ${color};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showAssessmentDetails(assessmentId) {
+            const assessments = Storage.get('risk_assessments') || [];
+            const assessment = assessments.find(a => a.id === assessmentId);
+            if (assessment) {
+                displayDetailedResults(assessment);
+                // Scroll to detailed results
+                document.getElementById('detailedResultsCard').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Initial load
+        loadPatientData();
+    </script>
+</body>
+
+</html>
