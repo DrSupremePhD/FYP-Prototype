@@ -78,6 +78,31 @@ INSERT OR IGNORE INTO users (
     datetime('now')
 );
 
+-- Insert default security admin user (if not exists)
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name, 
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'secadmin_default',
+    'security@privagene.com',
+    'security123',
+    'security_admin',
+    'Security',
+    'Administrator',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
 -- Insert test patient user (with research consent)
 INSERT OR IGNORE INTO users (
     id, 

@@ -196,7 +196,8 @@ const Auth = {
             admin: basePath + 'admin/dashboard.html',
             system_admin: basePath + 'system-admin/dashboard.html',
             researcher: basePath + 'researcher/dashboard.html',
-            caregiver: basePath + 'caregiver/dashboard.html'
+            caregiver: basePath + 'caregiver/dashboard.html',
+            security_admin: basePath + 'security/security-dashboard.html'
         };
 
         const dashboardPath = dashboardPaths[user.role];

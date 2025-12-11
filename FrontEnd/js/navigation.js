@@ -91,7 +91,9 @@ const Navigation = {
             admin: 'Hospital Admin',
             hospital_admin: 'Hospital Admin',
             system_admin: 'System Admin',
-            researcher: 'Researcher'
+            researcher: 'Researcher',
+            caregiver: 'Caregiver',
+            security_admin: 'Security Admin'
         };
         return roleMap[role] || role;
     }

@@ -2259,3 +2259,155 @@ app.delete('/api/audit-logs/cleanup', requireRole(['admin']), async (req, res) =
     });
   }
 });
+
+// ===================================
+// SECURITY ADMIN AUTHENTICATION ENDPOINTS
+// ===================================
+
+// Security Admin Login (separate from regular login)
+app.post('/api/security/login', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['email', 'password'],
+        message: 'Please provide both email and password'
+      });
+    }
+
+    const user = await userService.getUserByEmail(email);
+
+    if (!user) {
+      // Log failed security login attempt - user not found
+      await auditService.createLog({
+        userEmail: email,
+        action: 'security_login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'User not found', portal: 'security' }
+      });
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Email or password incorrect'
+      });
+    }
+
+    // IMPORTANT: Only allow security_admin role to login through this endpoint
+    if (user.role !== 'security_admin') {
+      // Log unauthorized access attempt
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'security_login',
+        status: 'failure',
+        severity: 'critical',
+        ipAddress,
+        userAgent,
+        details: { 
+          reason: 'Unauthorized role attempted security login', 
+          attemptedRole: user.role,
+          portal: 'security'
+        }
+      });
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'This portal is restricted to security administrators only'
+      });
+    }
+
+    // Simple password comparison (NOTE: In production, use bcrypt!)
+    if (user.password !== password) {
+      // Log failed login - wrong password
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'security_login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Invalid password', portal: 'security' }
+      });
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Email or password incorrect'
+      });
+    }
+
+    // Check if user is active
+    if (user.status !== 'active') {
+      // Log failed login - account not active
+      await auditService.createLog({
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        action: 'security_login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Account not active', status: user.status, portal: 'security' }
+      });
+      return res.status(403).json({
+        error: 'Account not active',
+        message: 'Your account has been suspended or is pending approval'
+      });
+    }
+
+    // Success! Return user data (excluding password)
+    const userData = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      status: user.status,
+      created_at: user.created_at
+    };
+
+    // Log successful security login
+    await auditService.createLog({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'security_login',
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { message: 'Security administrator logged in successfully', portal: 'security' }
+    });
+
+    return res.json({
+      success: true,
+      user: userData,
+      message: 'Security login successful'
+    });
+
+  } catch (err) {
+    console.error('Security login error:', err);
+    // Log error
+    await auditService.createLog({
+      userEmail: req.body.email,
+      action: 'security_login',
+      status: 'failure',
+      severity: 'error',
+      ipAddress,
+      userAgent,
+      details: { error: err.message, portal: 'security' }
+    });
+    return res.status(500).json({
+      error: 'Login failed',
+      message: 'An unexpected error occurred. Please try again.'
+    });
+  }
+});

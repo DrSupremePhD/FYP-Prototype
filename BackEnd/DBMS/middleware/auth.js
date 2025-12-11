@@ -1,7 +1,7 @@
 // middleware/auth.js
 // Simple header-based role check used for submission. Replace with real auth as needed.
 // Roles mapping:
-// Frontend: patient, doctor, hospital_admin, researcher, system_admin
+// Frontend: patient, doctor, hospital_admin, researcher, system_admin, security_admin
 // Backend: patient, doctor, researcher, admin
 
 function requireRole(allowedRoles = []) {
@@ -11,7 +11,7 @@ function requireRole(allowedRoles = []) {
     if (!role) {
       return res.status(401).json({
         error: 'Missing X-Role header',
-        hint: 'Include X-Role header with value: patient, doctor, hospital_admin, researcher, or system_admin'
+        hint: 'Include X-Role header with value: patient, doctor, hospital_admin, researcher, system_admin, or security_admin'
       });
     }
 
@@ -21,7 +21,8 @@ function requireRole(allowedRoles = []) {
       'doctor': 'doctor',
       'hospital_admin': 'admin',
       'researcher': 'researcher',
-      'system_admin': 'admin'
+      'system_admin': 'admin',
+      'security_admin': 'admin'
     };
 
     const mappedRole = roleMapping[role] || role;
