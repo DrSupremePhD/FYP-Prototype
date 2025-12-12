@@ -71,6 +71,41 @@ const riskAssessmentService = {
   },
 
   /**
+   * Get all assessments for a user - CAREGIVER VIEW (excludes matched_genes for privacy)
+   * This method is specifically for caregivers who should see risk data but NOT the specific genes
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} Array of assessments WITHOUT matched_genes
+   */
+  async getAssessmentsByUserForCaregiver(userId) {
+    const assessments = await all(`
+      SELECT 
+        id,
+        user_id as userId,
+        overall_risk as overallRisk,
+        disease_id as diseaseId,
+        match_count as matchCount,
+        risk_percentage as riskPercentage,
+        created_at as createdAt
+      FROM risk_assessments
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [userId]);
+    
+    // Return assessments WITHOUT matched_genes field
+    // Caregivers can see the count (matchCount) but not the actual gene names
+    return assessments.map(a => ({
+      id: a.id,
+      userId: a.userId,
+      overallRisk: a.overallRisk,
+      diseaseId: a.diseaseId,
+      matchCount: a.matchCount,
+      riskPercentage: a.riskPercentage,
+      createdAt: a.createdAt
+      // NOTE: matched_genes is intentionally excluded for caregiver privacy
+    }));
+  },
+
+  /**
    * Get a specific assessment by ID
    * @param {string} assessmentId - Assessment ID
    * @returns {Promise<Object|null>} Assessment or null if not found

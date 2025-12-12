@@ -15,6 +15,9 @@ const diseaseService = require('./services/diseaseService');
 // For risk assessment
 const riskAssessmentService = require('./services/riskAssessmentService');
 
+// For caregiver access
+const caregiverAccessService = require('./services/caregiverAccessService');
+
 
 
 const app = express();
@@ -1240,6 +1243,404 @@ app.get('/api/researcher/consented-assessments', requireRole(['researcher', 'adm
     });
   }
 });
+
+// ===================================
+// CAREGIVER ACCESS ENDPOINTS
+// ===================================
+
+// Check if a caregiver exists by email (for patient to validate before sending invitation)
+app.get('/api/caregiver-access/check-caregiver', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email is required'
+      });
+    }
+
+    const user = await userService.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        found: false,
+        message: 'We could not find any caregivers with that email. Please check that your entered email is correct.'
+      });
+    }
+
+    if (user.role !== 'caregiver') {
+      return res.status(404).json({
+        success: false,
+        found: false,
+        message: 'We could not find any caregivers with that email. Please check that your entered email is correct.'
+      });
+    }
+
+    // Return basic caregiver info (no sensitive data)
+    return res.json({
+      success: true,
+      found: true,
+      caregiver: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name
+      }
+    });
+  } catch (err) {
+    console.error('Check caregiver error:', err);
+    return res.status(500).json({
+      error: 'Failed to check caregiver',
+      message: err.message
+    });
+  }
+});
+
+// Create a new caregiver access invitation (patient invites caregiver)
+app.post('/api/caregiver-access/invite', async (req, res) => {
+  try {
+    const { patientId, caregiverEmail, relationship } = req.body;
+
+    if (!patientId || !caregiverEmail || !relationship) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['patientId', 'caregiverEmail', 'relationship']
+      });
+    }
+
+    // Find caregiver by email
+    const caregiver = await userService.getUserByEmail(caregiverEmail);
+
+    if (!caregiver || caregiver.role !== 'caregiver') {
+      return res.status(404).json({
+        error: 'Caregiver not found',
+        message: 'We could not find any caregivers with that email. Please check that your entered email is correct.'
+      });
+    }
+
+    // Check if active or pending access already exists
+    const existingAccess = await caregiverAccessService.activeOrPendingAccessExists(patientId, caregiver.id);
+
+    if (existingAccess) {
+      return res.status(409).json({
+        error: 'Access already exists',
+        message: existingAccess.status === 'pending' 
+          ? 'An invitation is already pending for this caregiver'
+          : 'This caregiver already has active access to your data'
+      });
+    }
+
+    // Check if there's a revoked/declined record that can be re-invited
+    const previousAccess = await caregiverAccessService.accessExists(patientId, caregiver.id);
+
+    let access;
+    if (previousAccess && (previousAccess.status === 'revoked' || previousAccess.status === 'declined')) {
+      // Re-invite
+      access = await caregiverAccessService.reInviteCaregiver(patientId, caregiver.id, relationship);
+    } else {
+      // Create new
+      access = await caregiverAccessService.createAccess({
+        patientId,
+        caregiverId: caregiver.id,
+        relationship
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      access: {
+        ...access,
+        caregiverEmail: caregiver.email,
+        caregiverName: `${caregiver.first_name} ${caregiver.last_name}`
+      },
+      message: 'Invitation sent successfully'
+    });
+  } catch (err) {
+    console.error('Create caregiver access error:', err);
+    return res.status(500).json({
+      error: 'Failed to create invitation',
+      message: err.message
+    });
+  }
+});
+
+// Get all caregivers for a patient
+app.get('/api/caregiver-access/patient/:patientId', async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { status } = req.query;
+
+    const caregivers = await caregiverAccessService.getCaregiversForPatient(patientId, status);
+    const counts = await caregiverAccessService.getCaregiverCountsForPatient(patientId);
+
+    return res.json({
+      success: true,
+      counts,
+      caregivers
+    });
+  } catch (err) {
+    console.error('Get caregivers for patient error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve caregivers',
+      message: err.message
+    });
+  }
+});
+
+// Get all patients for a caregiver
+app.get('/api/caregiver-access/caregiver/:caregiverId', async (req, res) => {
+  try {
+    const { caregiverId } = req.params;
+    const { status } = req.query;
+
+    const patients = await caregiverAccessService.getPatientsForCaregiver(caregiverId, status);
+    const counts = await caregiverAccessService.getPatientCountsForCaregiver(caregiverId);
+
+    return res.json({
+      success: true,
+      counts,
+      patients
+    });
+  } catch (err) {
+    console.error('Get patients for caregiver error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve patients',
+      message: err.message
+    });
+  }
+});
+
+// Accept an invitation (caregiver accepts)
+app.post('/api/caregiver-access/:accessId/accept', async (req, res) => {
+  try {
+    const { accessId } = req.params;
+    const { caregiverId } = req.body;
+
+    if (!caregiverId) {
+      return res.status(400).json({
+        error: 'Caregiver ID is required'
+      });
+    }
+
+    const access = await caregiverAccessService.acceptAccess(accessId, caregiverId);
+
+    return res.json({
+      success: true,
+      access,
+      message: 'Invitation accepted successfully'
+    });
+  } catch (err) {
+    console.error('Accept invitation error:', err);
+    return res.status(400).json({
+      error: 'Failed to accept invitation',
+      message: err.message
+    });
+  }
+});
+
+// Decline an invitation (caregiver declines)
+app.post('/api/caregiver-access/:accessId/decline', async (req, res) => {
+  try {
+    const { accessId } = req.params;
+    const { caregiverId } = req.body;
+
+    if (!caregiverId) {
+      return res.status(400).json({
+        error: 'Caregiver ID is required'
+      });
+    }
+
+    const access = await caregiverAccessService.declineAccess(accessId, caregiverId);
+
+    return res.json({
+      success: true,
+      access,
+      message: 'Invitation declined'
+    });
+  } catch (err) {
+    console.error('Decline invitation error:', err);
+    return res.status(400).json({
+      error: 'Failed to decline invitation',
+      message: err.message
+    });
+  }
+});
+
+// Revoke access (patient revokes)
+app.post('/api/caregiver-access/:accessId/revoke', async (req, res) => {
+  try {
+    const { accessId } = req.params;
+    const { patientId } = req.body;
+
+    if (!patientId) {
+      return res.status(400).json({
+        error: 'Patient ID is required'
+      });
+    }
+
+    const access = await caregiverAccessService.revokeAccess(accessId, patientId);
+
+    return res.json({
+      success: true,
+      access,
+      message: 'Access revoked successfully'
+    });
+  } catch (err) {
+    console.error('Revoke access error:', err);
+    return res.status(400).json({
+      error: 'Failed to revoke access',
+      message: err.message
+    });
+  }
+});
+
+// Cancel a pending invitation (patient cancels)
+app.delete('/api/caregiver-access/:accessId', async (req, res) => {
+  try {
+    const { accessId } = req.params;
+    const { patientId } = req.body;
+
+    if (!patientId) {
+      return res.status(400).json({
+        error: 'Patient ID is required'
+      });
+    }
+
+    const result = await caregiverAccessService.cancelAccess(accessId, patientId);
+
+    return res.json({
+      success: true,
+      ...result,
+      message: 'Invitation cancelled successfully'
+    });
+  } catch (err) {
+    console.error('Cancel invitation error:', err);
+    return res.status(400).json({
+      error: 'Failed to cancel invitation',
+      message: err.message
+    });
+  }
+});
+
+// Get patient's risk assessments for caregiver view (limited data)
+app.get('/api/caregiver-access/patient/:patientId/assessments', async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { caregiverId } = req.query;
+
+    if (!caregiverId) {
+      return res.status(400).json({
+        error: 'Caregiver ID is required'
+      });
+    }
+
+    // Verify the caregiver has active access to this patient
+    const patients = await caregiverAccessService.getPatientsForCaregiver(caregiverId, 'active');
+    const hasAccess = patients.some(p => p.patient_id === patientId);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You do not have access to this patient\'s data'
+      });
+    }
+
+    // UPDATED: Use caregiver-safe method that excludes matched_genes
+    const assessments = await riskAssessmentService.getAssessmentsByUserForCaregiver(patientId);
+
+    return res.json({
+      success: true,
+      count: assessments.length,
+      assessments
+    });
+  } catch (err) {
+    console.error('Get patient assessments for caregiver error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve assessments',
+      message: err.message
+    });
+  }
+});
+
+// Get comprehensive patient data for caregiver view (patient info + access record + assessments + diseases)
+app.get('/api/caregiver-access/patient/:patientId/full-view', async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { caregiverId } = req.query;
+
+    if (!caregiverId) {
+      return res.status(400).json({
+        error: 'Caregiver ID is required'
+      });
+    }
+
+    // Verify the caregiver has active access to this patient
+    const patients = await caregiverAccessService.getPatientsForCaregiver(caregiverId, 'active');
+    const accessRecord = patients.find(p => p.patient_id === patientId);
+
+    if (!accessRecord) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You do not have access to this patient\'s data'
+      });
+    }
+
+    // Get patient info (excluding sensitive fields)
+    const patient = await userService.getUserById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        error: 'Patient not found'
+      });
+    }
+
+    // Remove sensitive info from patient data
+    const { password, ...patientData } = patient;
+
+    // UPDATED: Use caregiver-safe method that excludes matched_genes for privacy protection
+    const assessments = await riskAssessmentService.getAssessmentsByUserForCaregiver(patientId);
+    
+    // Log that caregiver accessed patient data (for audit trail)
+    console.log(`Caregiver ${caregiverId} accessed patient ${patientId} data (${assessments.length} assessments, matched_genes excluded for privacy)`);
+
+    // Get all diseases for reference (to show disease names and hospital info)
+    const diseases = await diseaseService.getAllDiseases();
+
+    return res.json({
+      success: true,
+      patient: {
+        id: patientData.id,
+        firstName: patientData.first_name,
+        lastName: patientData.last_name,
+        email: patientData.email
+      },
+      accessRecord: {
+        id: accessRecord.id,
+        relationship: accessRecord.relationship,
+        status: accessRecord.status,
+        createdAt: accessRecord.created_at,
+        acceptedAt: accessRecord.accepted_at
+      },
+      // Return caregiver-safe assessments WITHOUT matched_genes
+      assessments: assessments,
+      diseases: diseases.map(d => ({
+        id: d.id,
+        name: d.disease_name,
+        code: d.disease_code,
+        description: d.description,
+        hospitalId: d.hospital_id,
+        hospitalName: d.hospital_name || d.organization_name || 'Unknown Hospital'
+      }))
+    });
+  } catch (err) {
+    console.error('Get patient full view error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve patient data',
+      message: err.message
+    });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`PrivaGene DB service running on http://localhost:${PORT}`);

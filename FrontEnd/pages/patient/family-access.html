@@ -55,6 +55,7 @@
 
         .family-meta {
             display: flex;
+            flex-wrap: wrap;
             gap: var(--space-lg);
             font-size: var(--text-sm);
             color: var(--text-tertiary);
@@ -78,11 +79,6 @@
         .status-pending {
             background: hsla(38, 92%, 50%, 0.1);
             color: var(--warning-color);
-        }
-
-        .status-revoked {
-            background: hsla(0, 72%, 51%, 0.1);
-            color: var(--error-color);
         }
 
         .privacy-notice {
@@ -129,6 +125,20 @@
             font-size: var(--text-xs);
             color: var(--text-secondary);
         }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: var(--text-sm);
+            margin-top: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: hsla(0, 72%, 51%, 0.1);
+            border-radius: var(--radius-md);
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
     </style>
 </head>
 
@@ -136,65 +146,31 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <a href="../../index.html"
-                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+            <a href="../../index.html" style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
                 <span style="font-size: var(--text-3xl);">🧬</span>
                 <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
             </a>
         </div>
 
-        <div
-            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+        <div style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
             <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
         </div>
 
         <nav>
             <ul class="sidebar-menu">
-                <li class="sidebar-item">
-                    <a href="dashboard.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📊</span>
-                        Dashboard
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="upload-gene.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📤</span>
-                        Upload Gene Data
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="disease-selection.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">🧪</span>
-                        Risk Assessment
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="risk-results.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📈</span>
-                        My Results
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="family-access.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">👨‍👩‍👧</span>
-                        Family Access
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="profile.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">👤</span>
-                        Profile
-                    </a>
-                </li>
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span class="sidebar-link-icon">📊</span> Dashboard</a></li>
+                <li class="sidebar-item"><a href="upload-gene.html" class="sidebar-link"><span class="sidebar-link-icon">📤</span> Upload Gene Data</a></li>
+                <li class="sidebar-item"><a href="disease-selection.html" class="sidebar-link"><span class="sidebar-link-icon">🧪</span> Risk Assessment</a></li>
+                <li class="sidebar-item"><a href="risk-results.html" class="sidebar-link"><span class="sidebar-link-icon">📈</span> My Results</a></li>
+                <li class="sidebar-item"><a href="family-access.html" class="sidebar-link"><span class="sidebar-link-icon">👨‍👩‍👧</span> Family Access</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span class="sidebar-link-icon">👤</span> Profile</a></li>
             </ul>
         </nav>
 
         <div style="margin-top: auto;">
-            <button id="logout-btn" class="sidebar-link"
-                style="width: 100%; border: none; background: transparent; cursor: pointer;">
-                <span class="sidebar-link-icon">🚪</span>
-                Logout
+            <button id="logout-btn" class="sidebar-link" style="width: 100%; border: none; background: transparent; cursor: pointer;">
+                <span class="sidebar-link-icon">🚪</span> Logout
             </button>
         </div>
     </aside>
@@ -202,11 +178,8 @@
     <!-- Main Content -->
     <main class="main-with-sidebar">
         <div class="container-fluid">
-            <!-- Header -->
             <div style="margin-bottom: var(--space-xl);">
-                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
-                    Family Access
-                </h1>
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Family Access</h1>
                 <p class="text-secondary">Allow trusted family members to view your risk assessment results</p>
             </div>
 
@@ -225,14 +198,10 @@
                 <div class="card-header">
                     <h3 class="card-title">Add a Caregiver</h3>
                 </div>
-                <form id="addCaregiverForm" class="add-caregiver-form">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="caregiverName" class="form-label">Caregiver's Name</label>
-                        <input type="text" id="caregiverName" class="form-input" placeholder="e.g., Mary Doe" required>
-                    </div>
+                <form id="addCaregiverForm" class="add-caregiver-form" style="padding: var(--space-lg);">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="caregiverEmail" class="form-label">Caregiver's Email</label>
-                        <input type="email" id="caregiverEmail" class="form-input" placeholder="mary@email.com" required>
+                        <input type="email" id="caregiverEmail" class="form-input" placeholder="caregiver@email.com" required>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="relationship" class="form-label">Relationship</label>
@@ -247,10 +216,9 @@
                             <option value="caregiver">Professional Caregiver</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="height: fit-content;">
-                        ➕ Send Invitation
-                    </button>
+                    <button type="submit" class="btn btn-primary" style="height: fit-content;" id="submitBtn">➕ Send Invitation</button>
                 </form>
+                <div id="formError" class="error-message" style="margin: 0 var(--space-lg) var(--space-lg);"></div>
             </div>
 
             <!-- Active Caregivers -->
@@ -259,9 +227,7 @@
                     <h3 class="card-title">Active Caregivers</h3>
                     <span class="badge badge-primary" id="activeCount">0</span>
                 </div>
-                <div id="activeCaregivers">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="activeCaregivers"></div>
             </div>
 
             <!-- Pending Invitations -->
@@ -270,9 +236,7 @@
                     <h3 class="card-title">Pending Invitations</h3>
                     <span class="badge badge-warning" id="pendingCount">0</span>
                 </div>
-                <div id="pendingInvitations">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="pendingInvitations"></div>
             </div>
         </div>
     </main>
@@ -295,10 +259,10 @@
         </div>
     </div>
 
+    <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
-    <script src="../../js/seed-data.js"></script>
+    <script src="../../js/api-backend.js"></script>
     <script src="../../js/auth.js"></script>
-    <script src="../../js/api-mock.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
@@ -306,29 +270,31 @@
         Auth.requireRole('patient');
 
         const user = Auth.getCurrentUser();
-
-        // Display user info
         Navigation.displayUserInfo(user);
         Navigation.setActiveNav();
 
-        // Logout handler
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            Auth.logout();
-        });
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
-        // Load family access data
-        function loadFamilyAccess() {
-            const familyAccess = Storage.get('family_access') || [];
-            const userFamilyAccess = familyAccess.filter(fa => fa.patientId === user.id);
+        // Load family access data from backend
+        async function loadFamilyAccess() {
+            try {
+                const data = await API.getCaregiversForPatient(user.id);
+                
+                const active = data.caregivers.filter(c => c.status === 'active');
+                const pending = data.caregivers.filter(c => c.status === 'pending');
 
-            const active = userFamilyAccess.filter(fa => fa.status === 'active');
-            const pending = userFamilyAccess.filter(fa => fa.status === 'pending');
+                document.getElementById('activeCount').textContent = active.length;
+                document.getElementById('pendingCount').textContent = pending.length;
 
-            document.getElementById('activeCount').textContent = active.length;
-            document.getElementById('pendingCount').textContent = pending.length;
-
-            displayCaregivers(active, 'activeCaregivers', true);
-            displayCaregivers(pending, 'pendingInvitations', false);
+                displayCaregivers(active, 'activeCaregivers', true);
+                displayCaregivers(pending, 'pendingInvitations', false);
+            } catch (error) {
+                console.error('Error loading family access:', error);
+                document.getElementById('activeCount').textContent = '0';
+                document.getElementById('pendingCount').textContent = '0';
+                displayCaregivers([], 'activeCaregivers', true);
+                displayCaregivers([], 'pendingInvitations', false);
+            }
         }
 
         function displayCaregivers(caregivers, containerId, isActive) {
@@ -338,41 +304,39 @@
                 container.innerHTML = `
                     <div class="empty-state" style="padding: var(--space-xl);">
                         <div class="empty-state-icon">${isActive ? '👨‍👩‍👧' : '📨'}</div>
-                        <div class="empty-state-description">
-                            ${isActive ? 'No active caregivers yet' : 'No pending invitations'}
-                        </div>
+                        <div class="empty-state-description">${isActive ? 'No active caregivers yet' : 'No pending invitations'}</div>
                     </div>
                 `;
                 return;
             }
 
             container.innerHTML = caregivers.map(caregiver => {
-                const initials = caregiver.caregiverName.split(' ')
-                    .map(n => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .substring(0, 2);
+                const firstName = caregiver.caregiver_first_name || '';
+                const lastName = caregiver.caregiver_last_name || '';
+                const caregiverName = `${firstName} ${lastName}`.trim() || caregiver.caregiver_email;
+                
+                const initials = firstName && lastName 
+                    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+                    : caregiver.caregiver_email.substring(0, 2).toUpperCase();
 
                 const relationshipLabel = {
-                    'spouse': 'Spouse',
-                    'child': 'Son/Daughter',
-                    'parent': 'Parent',
-                    'sibling': 'Sibling',
-                    'grandchild': 'Grandchild',
-                    'other': 'Other Family',
+                    'spouse': 'Spouse', 'child': 'Son/Daughter', 'parent': 'Parent',
+                    'sibling': 'Sibling', 'grandchild': 'Grandchild', 'other': 'Other Family',
                     'caregiver': 'Professional Caregiver'
                 }[caregiver.relationship] || caregiver.relationship;
+
+                const createdDate = new Date(caregiver.created_at).toLocaleDateString();
 
                 return `
                     <div class="family-card">
                         <div class="family-info">
                             <div class="family-avatar">${initials}</div>
                             <div class="family-details">
-                                <h4>${caregiver.caregiverName}</h4>
+                                <h4>${caregiverName}</h4>
                                 <div class="family-meta">
-                                    <span>📧 ${caregiver.caregiverEmail}</span>
+                                    <span>📧 ${caregiver.caregiver_email}</span>
                                     <span>👤 ${relationshipLabel}</span>
-                                    <span>📅 Added ${UI.formatDate(caregiver.createdAt)}</span>
+                                    <span>📅 Added ${createdDate}</span>
                                 </div>
                                 <div class="permissions-list">
                                     <span class="permission-tag">✓ View Risk Results</span>
@@ -386,13 +350,9 @@
                                 ${caregiver.status === 'active' ? '● Active' : '○ Pending'}
                             </span>
                             ${isActive ? `
-                                <button class="btn btn-ghost btn-sm" onclick="showRevokeModal('${caregiver.id}', '${caregiver.caregiverName}')">
-                                    Revoke
-                                </button>
+                                <button class="btn btn-ghost btn-sm" onclick="showRevokeModal('${caregiver.id}', '${caregiverName.replace(/'/g, "\\'")}')">Revoke</button>
                             ` : `
-                                <button class="btn btn-ghost btn-sm" onclick="cancelInvitation('${caregiver.id}')">
-                                    Cancel
-                                </button>
+                                <button class="btn btn-ghost btn-sm" onclick="cancelInvitation('${caregiver.id}')">Cancel</button>
                             `}
                         </div>
                     </div>
@@ -400,66 +360,61 @@
             }).join('');
         }
 
-        // Add Caregiver Form
-        document.getElementById('addCaregiverForm').addEventListener('submit', (e) => {
-            e.preventDefault();
+        function showError(message) {
+            const errorEl = document.getElementById('formError');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
 
-            const name = document.getElementById('caregiverName').value.trim();
+        function hideError() {
+            document.getElementById('formError').classList.remove('show');
+        }
+
+        // Add Caregiver Form
+        document.getElementById('addCaregiverForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
             const email = document.getElementById('caregiverEmail').value.trim();
             const relationship = document.getElementById('relationship').value;
+            const submitBtn = document.getElementById('submitBtn');
 
-            if (!name || !email || !relationship) {
-                UI.showAlert('Please fill in all fields', 'error');
+            if (!email || !relationship) {
+                showError('Please fill in all fields');
                 return;
             }
 
-            // Check if already exists
-            const familyAccess = Storage.get('family_access') || [];
-            const exists = familyAccess.some(fa => 
-                fa.patientId === user.id && 
-                fa.caregiverEmail.toLowerCase() === email.toLowerCase() &&
-                fa.status !== 'revoked'
-            );
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
 
-            if (exists) {
-                UI.showAlert('This email already has access or a pending invitation', 'error');
-                return;
-            }
+            try {
+                // First check if caregiver exists
+                const checkResult = await API.checkCaregiverByEmail(email);
 
-            // Check if caregiver account exists
-            const users = Storage.get('users') || [];
-            const existingCaregiver = users.find(u => 
-                u.email.toLowerCase() === email.toLowerCase() && 
-                u.role === 'caregiver'
-            );
+                if (!checkResult.found) {
+                    showError(checkResult.message || 'We could not find any caregivers with that email. Please check that your entered email is correct.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '➕ Send Invitation';
+                    return;
+                }
 
-            // Create new family access record
-            const newAccess = {
-                id: 'fa_' + Date.now(),
-                patientId: user.id,
-                patientName: `${user.firstName} ${user.lastName}`,
-                caregiverId: existingCaregiver ? existingCaregiver.id : null,
-                caregiverName: name,
-                caregiverEmail: email,
-                relationship: relationship,
-                status: existingCaregiver ? 'active' : 'pending',
-                permissions: ['view_results', 'view_history'],
-                createdAt: new Date().toISOString()
-            };
+                // Send invitation
+                await API.inviteCaregiver({
+                    patientId: user.id,
+                    caregiverEmail: email,
+                    relationship: relationship
+                });
 
-            familyAccess.push(newAccess);
-            Storage.set('family_access', familyAccess);
+                document.getElementById('addCaregiverForm').reset();
+                await loadFamilyAccess();
+                UI.showAlert(`Invitation sent to ${email}. They will see your request in their dashboard.`, 'success');
 
-            // Clear form
-            document.getElementById('addCaregiverForm').reset();
-
-            // Reload list
-            loadFamilyAccess();
-
-            if (existingCaregiver) {
-                UI.showAlert(`${name} has been granted access to your results!`, 'success');
-            } else {
-                UI.showAlert(`Invitation sent to ${email}. They will need to create a caregiver account.`, 'success');
+            } catch (error) {
+                console.error('Error sending invitation:', error);
+                showError(error.message || 'Failed to send invitation. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '➕ Send Invitation';
             }
         });
 
@@ -477,43 +432,39 @@
             document.getElementById('revokeModal').style.display = 'none';
         }
 
-        document.getElementById('confirmRevokeBtn').addEventListener('click', () => {
+        document.getElementById('confirmRevokeBtn').addEventListener('click', async () => {
             if (!revokeAccessId) return;
 
-            const familyAccess = Storage.get('family_access') || [];
-            const index = familyAccess.findIndex(fa => fa.id === revokeAccessId);
-
-            if (index !== -1) {
-                familyAccess[index].status = 'revoked';
-                familyAccess[index].revokedAt = new Date().toISOString();
-                Storage.set('family_access', familyAccess);
-
+            try {
+                await API.revokeCaregiverAccess(revokeAccessId, user.id);
                 UI.showAlert('Access has been revoked', 'success');
-                loadFamilyAccess();
+                await loadFamilyAccess();
+            } catch (error) {
+                console.error('Error revoking access:', error);
+                UI.showAlert('Failed to revoke access: ' + error.message, 'error');
             }
-
             closeRevokeModal();
         });
 
-        function cancelInvitation(accessId) {
-            const familyAccess = Storage.get('family_access') || [];
-            const filtered = familyAccess.filter(fa => fa.id !== accessId);
-            Storage.set('family_access', filtered);
+        async function cancelInvitation(accessId) {
+            if (!confirm('Are you sure you want to cancel this invitation?')) return;
 
-            UI.showAlert('Invitation cancelled', 'success');
-            loadFamilyAccess();
+            try {
+                await API.cancelCaregiverInvitation(accessId, user.id);
+                UI.showAlert('Invitation cancelled', 'success');
+                await loadFamilyAccess();
+            } catch (error) {
+                console.error('Error cancelling invitation:', error);
+                UI.showAlert('Failed to cancel invitation: ' + error.message, 'error');
+            }
         }
 
-        // Close modal on backdrop click
         document.getElementById('revokeModal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-backdrop')) {
-                closeRevokeModal();
-            }
+            if (e.target.classList.contains('modal-backdrop')) closeRevokeModal();
         });
 
         // Initial load
         loadFamilyAccess();
     </script>
 </body>
-
 </html>

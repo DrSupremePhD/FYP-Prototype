@@ -18,15 +18,11 @@
             padding: var(--space-lg);
             border-bottom: 1px solid var(--border-light);
             transition: background var(--transition-fast);
+            cursor: pointer;
         }
 
-        .patient-list-item:hover {
-            background: var(--bg-tertiary);
-        }
-
-        .patient-list-item:last-child {
-            border-bottom: none;
-        }
+        .patient-list-item:hover { background: var(--bg-tertiary); }
+        .patient-list-item:last-child { border-bottom: none; }
 
         .patient-info {
             display: flex;
@@ -63,9 +59,7 @@
             margin-bottom: var(--space-xl);
         }
 
-        .search-box input {
-            padding-left: var(--space-3xl);
-        }
+        .search-box input { padding-left: var(--space-3xl); }
 
         .search-icon {
             position: absolute;
@@ -78,82 +72,53 @@
 </head>
 
 <body>
-    <!-- Sidebar Navigation -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <a href="../../index.html"
-                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+            <a href="../../index.html" style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
                 <span style="font-size: var(--text-3xl);">🧬</span>
                 <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
             </a>
         </div>
 
-        <div
-            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+        <div style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe8b8d9b8cbe9b869f938e929bd09d9193">[email&#160;protected]</a></div>
-            <div style="margin-top: var(--space-sm);">
-                <span class="badge badge-info">Caregiver</span>
-            </div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
+            <div style="margin-top: var(--space-sm);"><span class="badge badge-info">Caregiver</span></div>
         </div>
 
         <nav>
             <ul class="sidebar-menu">
-                <li class="sidebar-item">
-                    <a href="dashboard.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">📊</span>
-                        Dashboard
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="my-patients.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">👥</span>
-                        My Patients
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="profile.html" class="sidebar-link">
-                        <span class="sidebar-link-icon">👤</span>
-                        Profile
-                    </a>
-                </li>
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span class="sidebar-link-icon">📊</span> Dashboard</a></li>
+                <li class="sidebar-item"><a href="my-patients.html" class="sidebar-link"><span class="sidebar-link-icon">👥</span> My Patients</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span class="sidebar-link-icon">👤</span> Profile</a></li>
             </ul>
         </nav>
 
         <div style="margin-top: auto;">
-            <button id="logout-btn" class="sidebar-link"
-                style="width: 100%; border: none; background: transparent; cursor: pointer;">
-                <span class="sidebar-link-icon">🚪</span>
-                Logout
+            <button id="logout-btn" class="sidebar-link" style="width: 100%; border: none; background: transparent; cursor: pointer;">
+                <span class="sidebar-link-icon">🚪</span> Logout
             </button>
         </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-with-sidebar">
         <div class="container-fluid">
             <div style="margin-bottom: var(--space-xl);">
-                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
-                    My Patients
-                </h1>
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">My Patients</h1>
                 <p class="text-secondary">View and manage patients you're caring for</p>
             </div>
 
-            <!-- Search -->
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="searchInput" class="form-input" placeholder="Search patients...">
             </div>
 
-            <!-- Patients List -->
             <div class="card">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3 class="card-title">All Patients</h3>
                     <span class="badge badge-primary" id="patientCount">0</span>
                 </div>
-                <div id="patientsList">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="patientsList"></div>
             </div>
         </div>
     </main>
@@ -173,15 +138,59 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
+        async function loadUserName() {
+            try {
+                const fullUser = await API.getUserById(user.id);
+                const firstName = fullUser.first_name || fullUser.firstName;
+                const lastName = fullUser.last_name || fullUser.lastName;
+                
+                const userName = firstName && lastName 
+                    ? `${firstName} ${lastName}`
+                    : firstName || lastName || user.email.split('@')[0];
+                
+                // Update all elements with data-user-name attribute
+                document.querySelectorAll('[data-user-name]').forEach(el => {
+                    el.textContent = userName;
+                });
+            } catch (error) {
+                console.error('Error loading user name:', error);
+                // Fallback to email prefix if fetch fails
+                document.querySelectorAll('[data-user-name]').forEach(el => {
+                    el.textContent = user.email.split('@')[0];
+                });
+            }
+        }
+
+        // Update email display in sidebar
+        const emailEl = document.querySelector('[data-user-email]');
+        if (emailEl) {
+            emailEl.textContent = user.email;
+        }
+
+
+        // Load user name from backend
+        loadUserName();
+
         let allPatients = [];
 
-        // TODO: Implement backend API for family access
-        function loadPatients() {
-            // Family access feature requires backend implementation
-            // For now, show empty state
-            allPatients = [];
-            document.getElementById('patientCount').textContent = '0';
-            displayPatients(allPatients);
+        const relationshipLabels = {
+            'spouse': '💑 Spouse', 'child': '👶 Your Parent', 'parent': '👴 Your Child',
+            'sibling': '👫 Sibling', 'grandchild': '👴 Grandchild', 'other': '👪 Family',
+            'caregiver': '🏥 Patient'
+        };
+
+        async function loadPatients() {
+            try {
+                const data = await API.getPatientsForCaregiver(user.id, 'active');
+                allPatients = data.patients || [];
+                document.getElementById('patientCount').textContent = allPatients.length;
+                displayPatients(allPatients);
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                allPatients = [];
+                document.getElementById('patientCount').textContent = '0';
+                displayPatients([]);
+            }
         }
 
         function displayPatients(patients) {
@@ -199,48 +208,28 @@
                 return;
             }
 
-            const relationshipLabels = {
-                'spouse': '💑 Spouse',
-                'child': '👶 Your Parent',
-                'parent': '👴 Your Child',
-                'sibling': '👫 Sibling',
-                'grandchild': '👴 Grandchild',
-                'other': '👪 Family',
-                'caregiver': '🏥 Patient'
-            };
-
             container.innerHTML = patients.map(patient => {
-                const initials = `${patient.firstName[0]}${patient.lastName[0]}`.toUpperCase();
+                const firstName = patient.patient_first_name || '';
+                const lastName = patient.patient_last_name || '';
+                const patientName = `${firstName} ${lastName}`.trim() || patient.patient_email;
+                const initials = firstName && lastName 
+                    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+                    : patient.patient_email.substring(0, 2).toUpperCase();
                 const relationship = relationshipLabels[patient.relationship] || '👪 Family';
-
-                let riskDisplay = '<span class="text-tertiary">No data</span>';
-                if (patient.latestRisk !== null) {
-                    const risk = patient.latestRisk;
-                    let color = 'var(--success-color)';
-                    let level = 'Low';
-                    if (risk >= 70) { color = 'var(--error-color)'; level = 'High'; }
-                    else if (risk >= 30) { color = 'var(--warning-color)'; level = 'Medium'; }
-                    riskDisplay = `<span style="color: ${color}; font-weight: 600;">${risk}% ${level}</span>`;
-                }
+                const accessDate = new Date(patient.accepted_at || patient.created_at).toLocaleDateString();
 
                 return `
-                    <div class="patient-list-item" onclick="viewPatient('${patient.id}')" style="cursor: pointer;">
+                    <div class="patient-list-item" onclick="viewPatient('${patient.patient_id}')">
                         <div class="patient-info">
                             <div class="patient-avatar">${initials}</div>
                             <div class="patient-details">
-                                <h4>${patient.firstName} ${patient.lastName}</h4>
+                                <h4>${patientName}</h4>
                                 <div class="patient-meta">
-                                    ${relationship} • ${patient.assessmentCount} assessments • Access since ${UI.formatDate(patient.accessGranted)}
+                                    ${relationship} • Access since ${accessDate}
                                 </div>
                             </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: var(--space-lg);">
-                            <div style="text-align: right;">
-                                <div class="text-xs text-tertiary">Latest Risk</div>
-                                <div>${riskDisplay}</div>
-                            </div>
-                            <span style="color: var(--text-tertiary);">→</span>
-                        </div>
+                        <span style="color: var(--text-tertiary);">→</span>
                     </div>
                 `;
             }).join('');
@@ -250,21 +239,18 @@
             window.location.href = `patient-view.html?patientId=${patientId}`;
         }
 
-        // Search functionality
         document.getElementById('searchInput').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
-            const filtered = allPatients.filter(p =>
-                p.firstName.toLowerCase().includes(query) ||
-                p.lastName.toLowerCase().includes(query) ||
-                p.email.toLowerCase().includes(query)
-            );
+            const filtered = allPatients.filter(p => {
+                const name = `${p.patient_first_name || ''} ${p.patient_last_name || ''}`.toLowerCase();
+                const email = (p.patient_email || '').toLowerCase();
+                return name.includes(query) || email.includes(query);
+            });
             displayPatients(filtered);
             document.getElementById('patientCount').textContent = filtered.length;
         });
 
-        // Load patients on page load
         loadPatients();
     </script>
 </body>
-
 </html>

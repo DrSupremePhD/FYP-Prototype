@@ -2054,6 +2054,351 @@ const BackendAPI = {
             console.error('Error activating organization:', error);
             throw error;
         }
+    },
+
+    // ===================================
+    // CAREGIVER ACCESS METHODS
+    // ===================================
+
+    /**
+     * Check if a caregiver exists by email
+     * @param {string} email - Caregiver's email
+     * @returns {Promise<Object>} Result with caregiver info if found
+     */
+    async checkCaregiverByEmail(email) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/caregiver-access/check-caregiver?email=${encodeURIComponent(email)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    found: false,
+                    message: data.message || 'Caregiver not found'
+                };
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error checking caregiver:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Send caregiver invitation (patient invites caregiver)
+     * @param {Object} data - { patientId, caregiverEmail, relationship }
+     * @returns {Promise<Object>} Created access record
+     */
+    async inviteCaregiver(data) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/caregiver-access/invite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || result.error || 'Failed to send invitation');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error inviting caregiver:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all caregivers for a patient
+     * @param {string} patientId - Patient's ID
+     * @param {string} [status] - Optional filter by status (active, pending, revoked)
+     * @returns {Promise<Object>} Caregivers list and counts
+     */
+    async getCaregiversForPatient(patientId, status = null) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/caregiver-access/patient/${patientId}`;
+            if (status) {
+                url += `?status=${status}`;
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch caregivers');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching caregivers for patient:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all patients for a caregiver
+     * @param {string} caregiverId - Caregiver's ID
+     * @param {string} [status] - Optional filter by status (active, pending)
+     * @returns {Promise<Object>} Patients list and counts
+     */
+    async getPatientsForCaregiver(caregiverId, status = null) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            let url = `${this.config.baseURL}/api/caregiver-access/caregiver/${caregiverId}`;
+            if (status) {
+                url += `?status=${status}`;
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch patients');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching patients for caregiver:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Accept a caregiver invitation
+     * @param {string} accessId - Access record ID
+     * @param {string} caregiverId - Caregiver's ID
+     * @returns {Promise<Object>} Updated access record
+     */
+    async acceptCaregiverInvitation(accessId, caregiverId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/caregiver-access/${accessId}/accept`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ caregiverId })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to accept invitation');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error accepting invitation:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Decline a caregiver invitation
+     * @param {string} accessId - Access record ID
+     * @param {string} caregiverId - Caregiver's ID
+     * @returns {Promise<Object>} Updated access record
+     */
+    async declineCaregiverInvitation(accessId, caregiverId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/caregiver-access/${accessId}/decline`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ caregiverId })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to decline invitation');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error declining invitation:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Revoke caregiver access (patient revokes)
+     * @param {string} accessId - Access record ID
+     * @param {string} patientId - Patient's ID
+     * @returns {Promise<Object>} Updated access record
+     */
+    async revokeCaregiverAccess(accessId, patientId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/caregiver-access/${accessId}/revoke`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ patientId })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to revoke access');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error revoking access:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Cancel a pending invitation (patient cancels)
+     * @param {string} accessId - Access record ID
+     * @param {string} patientId - Patient's ID
+     * @returns {Promise<Object>} Result
+     */
+    async cancelCaregiverInvitation(accessId, patientId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/caregiver-access/${accessId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ patientId })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to cancel invitation');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error cancelling invitation:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get patient's risk assessments (for caregiver view)
+     * @param {string} patientId - Patient's ID
+     * @param {string} caregiverId - Caregiver's ID (for access verification)
+     * @returns {Promise<Object>} Assessments list
+     */
+    async getPatientAssessmentsForCaregiver(patientId, caregiverId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/caregiver-access/patient/${patientId}/assessments?caregiverId=${caregiverId}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to fetch assessments');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching patient assessments:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get comprehensive patient data for caregiver view
+     * Includes patient info, access record, assessments, and disease reference
+     * @param {string} patientId - Patient's ID
+     * @param {string} caregiverId - Caregiver's ID (for access verification)
+     * @returns {Promise<Object>} Full patient view data
+     */
+    async getPatientFullView(patientId, caregiverId) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/caregiver-access/patient/${patientId}/full-view?caregiverId=${caregiverId}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to fetch patient data');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching patient full view:', error);
+            throw error;
+        }
     }
 
 
@@ -2062,5 +2407,3 @@ const BackendAPI = {
 // Make it available as both BackendAPI and API for compatibility
 window.BackendAPI = BackendAPI;
 window.API = BackendAPI;
-
-

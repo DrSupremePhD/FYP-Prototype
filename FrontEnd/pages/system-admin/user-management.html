@@ -202,7 +202,7 @@
                     : u.status === 'suspended'
                         ? `<button class="btn btn-sm btn-outline" onclick="activateUser('${u.id}')">Activate</button>`
                         : `<button class="btn btn-sm btn-outline" onclick="suspendUser('${u.id}', '${u.email}')">Suspend</button>`}
-                                        <button class="btn btn-sm btn-error" onclick="deleteUser('${u.id}', '${u.email}')" style="margin-left: var(--space-xs);">Delete</button>
+                                        <button class="btn btn-sm btn-error" style="background: var(--error-color); color: white;" onclick="deleteUser('${u.id}', '${u.email}')" style="margin-left: var(--space-xs);">Delete</button>
                                     </td>
                                 </tr>
                             `).join('')}

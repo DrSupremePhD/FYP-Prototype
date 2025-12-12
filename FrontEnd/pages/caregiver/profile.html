@@ -192,6 +192,40 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
+        async function loadUserName() {
+            try {
+                const fullUser = await API.getUserById(user.id);
+                const firstName = fullUser.first_name || fullUser.firstName;
+                const lastName = fullUser.last_name || fullUser.lastName;
+                
+                const userName = firstName && lastName 
+                    ? `${firstName} ${lastName}`
+                    : firstName || lastName || user.email.split('@')[0];
+                
+                // Update all elements with data-user-name attribute
+                document.querySelectorAll('[data-user-name]').forEach(el => {
+                    el.textContent = userName;
+                });
+            } catch (error) {
+                console.error('Error loading user name:', error);
+                // Fallback to email prefix if fetch fails
+                document.querySelectorAll('[data-user-name]').forEach(el => {
+                    el.textContent = user.email.split('@')[0];
+                });
+            }
+        }
+
+        // Update email display in sidebar
+        const emailEl = document.querySelector('[data-user-email]');
+        if (emailEl) {
+            emailEl.textContent = user.email;
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        // Load user name from backend
+        loadUserName();
+
         // Load profile data
         function loadProfile() {
             document.getElementById('firstName').value = user.firstName || user.first_name || '';

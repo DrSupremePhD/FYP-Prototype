@@ -34,8 +34,6 @@
                             class="sidebar-link-icon">📊</span>Dashboard</a></li>
                 <li class="sidebar-item"><a href="genes.html" class="sidebar-link active"><span
                             class="sidebar-link-icon">🧬</span>Genes</a></li>
-                <li class="sidebar-item"><a href="appointments.html" class="sidebar-link"><span
-                            class="sidebar-link-icon">📅</span>Appointments</a></li>
                 <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
                             class="sidebar-link-icon">👤</span>Profile</a></li>
             </ul>
@@ -57,56 +55,31 @@
             </div>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-4 gap-lg" style="margin-bottom: var(--space-2xl);">
+            <div class="grid grid-cols-2 gap-lg" style="margin-bottom: var(--space-2xl);">
                 <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Patients</div>
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Genes Uploaded By You</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--primary-color);"
-                        id="patientCount">0</div>
+                        id="geneCount">0</div>
                 </div>
 
                 <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Today's Appointments
-                    </div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--secondary-color);"
-                        id="todayAppointments">0</div>
-                </div>
-
-                <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Pending Reviews</div>
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Genes in Hospital</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--warning-color);"
                         id="pendingReviews">0</div>
                 </div>
-
-                <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Consultations</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--accent-color);"
-                        id="consultationCount">0</div>
-                </div>
             </div>
-
-            <!-- Recent Activity & Appointments -->
-            <div class="grid grid-cols-2 gap-xl">
-                <!-- Today's Appointments -->
+            
+            <div class="grid grid-cols-1 gap-xl">
+                <!-- Recent Results -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Today's Schedule</h3>
+                    <div class="card-header" id="recentGeneUploads">
+                        <h3 class="card-title">Recently Uploaded Genes</h3>
                     </div>
-                    <div id="todaySchedule">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Recent Patient Activities -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Patient Activity</h3>
-                    </div>
-                    <div id="patientActivity">
+                    <div id="recentGenes">
                         <!-- Will be populated by JavaScript -->
                     </div>
                 </div>
             </div>
-        </div>
     </main>
 
     <script src="../../js/config.js"></script>
@@ -127,38 +100,16 @@
         async function loadDashboard() {
             try {
                 // BACKEND_INTEGRATION: These API calls will fetch from backend
-                const appointments = await API.getAppointments(user.id, 'hospital');
 
-                console.log('Dashboard - All appointments:', appointments); // Debug log
+
 
                 // Get all risk assessments (without filtering by userId)
                 const allUsers = Storage.get('users') || [];
                 const allAssessments = Storage.getRiskAssessments() || [];
 
-                // Count unique patients from appointments
-                const uniquePatients = new Set(appointments.map(apt => apt.patientId));
-                document.getElementById('patientCount').textContent = uniquePatients.size;
-
-                // Today's appointments - use Date comparison instead of string comparison
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Set to start of day for comparison
-
-                const todayApts = appointments.filter(apt => {
-                    const aptDate = new Date(apt.date);
-                    aptDate.setHours(0, 0, 0, 0);
-                    return aptDate.getTime() === today.getTime() && apt.status !== 'cancelled';
-                });
-
-                console.log('Dashboard - Today\'s appointments:', todayApts); // Debug log
-
-                document.getElementById('todayAppointments').textContent = todayApts.length;
-
                 // Pending reviews (assessments without specialist notes)
                 const pending = allAssessments.filter(a => !a.reviewedBy).length;
                 document.getElementById('pendingReviews').textContent = pending;
-
-                // Total consultations
-                document.getElementById('consultationCount').textContent = appointments.filter(a => a.status === 'completed').length;
 
                 // Display today's schedule
                 displayTodaySchedule(todayApts);
@@ -172,32 +123,6 @@
             }
         }
 
-        function displayTodaySchedule(appointments) {
-            const container = document.getElementById('todaySchedule');
-
-            if (appointments.length === 0) {
-                container.innerHTML = `
-          <div class="empty-state" style="padding: var(--space-xl);">
-            <div class="empty-state-icon">📅</div>
-            <div class="empty-state-description">No appointments today</div>
-          </div>
-        `;
-                return;
-            }
-
-            container.innerHTML = appointments.map(apt => `
-        <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 500;">${apt.slot}</div>
-              <div class="text-secondary text-sm">Patient ID: ${apt.patientId}</div>
-              <div class="text-sm" style="margin-top: var(--space-xs);">${apt.reason || 'Genetic Counseling'}</div>
-            </div>
-            <span class="badge badge-${apt.status === 'confirmed' ? 'success' : 'warning'}">${apt.status}</span>
-          </div>
-        </div>
-      `).join('');
-        }
 
         function displayPatientActivity(assessments) {
             const container = document.getElementById('patientActivity');

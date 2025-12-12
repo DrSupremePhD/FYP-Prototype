@@ -200,7 +200,15 @@ const diseaseService = {
    * @returns {Promise<Array>} - Array of all diseases
    */
   async getAllDiseases() {
-    const sql = 'SELECT * FROM diseases ORDER BY created_at DESC';
+    const sql = `
+      SELECT d.*, 
+            u.organization_name as hospital_name,
+            u.first_name as hospital_first_name,
+            u.last_name as hospital_last_name
+      FROM diseases d
+      LEFT JOIN users u ON d.hospital_id = u.id
+      ORDER BY d.created_at DESC
+    `;
     const diseases = await all(sql);
     return this.processDiseases(diseases);
   },

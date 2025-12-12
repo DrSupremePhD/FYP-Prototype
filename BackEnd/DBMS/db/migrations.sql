@@ -887,3 +887,149 @@ VALUES ('seed_risk_029', 'patient_test_4', 40.0, 'disease_obesity_1', 4, '["FTO"
 
 INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
 VALUES ('seed_risk_030', 'patient_test_4', 57.6, 'disease_colorectal_1', 4, '["APC","MLH1","MSH2","SMAD4"]', 57.6, '2025-11-25T14:15:30.000Z');
+
+-- ===================================
+-- Caregiver Access Table
+-- ===================================
+-- caregiver_access table: manages patient-caregiver relationships and access permissions
+CREATE TABLE IF NOT EXISTS caregiver_access (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL,
+  caregiver_id TEXT NOT NULL,
+  relationship TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  accepted_at TEXT,
+  revoked_at TEXT,
+  
+  FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (caregiver_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(patient_id, caregiver_id)
+);
+
+-- Indexes for caregiver access queries
+CREATE INDEX IF NOT EXISTS idx_caregiver_access_patient ON caregiver_access(patient_id);
+CREATE INDEX IF NOT EXISTS idx_caregiver_access_caregiver ON caregiver_access(caregiver_id);
+CREATE INDEX IF NOT EXISTS idx_caregiver_access_status ON caregiver_access(status);
+
+
+-- ===================================
+-- SEED CAREGIVER AND CAREGIVER ACCESS DATA
+-- ===================================
+
+-- Insert test caregiver user
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name,
+    phone,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'caregiver_test_1',
+    'caregiver@test.com',
+    'test123',
+    'caregiver',
+    'Mary',
+    'Caregiver',
+    '+1234567890',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Insert a second test caregiver
+INSERT OR IGNORE INTO users (
+    id, 
+    email, 
+    password, 
+    role, 
+    first_name, 
+    last_name,
+    phone,
+    status,
+    research_consent,
+    created_at,
+    updated_at
+) VALUES (
+    'caregiver_test_2',
+    'sarah.caregiver@email.com',
+    'caregiver123',
+    'caregiver',
+    'Sarah',
+    'Johnson',
+    '+0987654321',
+    'active',
+    0,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Seed caregiver access relationships
+-- Caregiver 1 has active access to Patient 1 (spouse relationship)
+INSERT OR IGNORE INTO caregiver_access (
+    id,
+    patient_id,
+    caregiver_id,
+    relationship,
+    status,
+    created_at,
+    updated_at,
+    accepted_at
+) VALUES (
+    'access_001',
+    'patient_test_1',
+    'caregiver_test_1',
+    'spouse',
+    'active',
+    datetime('now', '-30 days'),
+    datetime('now', '-29 days'),
+    datetime('now', '-29 days')
+);
+
+-- Caregiver 1 has pending invitation from Patient 2 (parent relationship)
+INSERT OR IGNORE INTO caregiver_access (
+    id,
+    patient_id,
+    caregiver_id,
+    relationship,
+    status,
+    created_at,
+    updated_at
+) VALUES (
+    'access_002',
+    'patient_test_2',
+    'caregiver_test_1',
+    'parent',
+    'pending',
+    datetime('now', '-2 days'),
+    datetime('now', '-2 days')
+);
+
+-- Caregiver 2 has active access to Patient 3 (professional caregiver)
+INSERT OR IGNORE INTO caregiver_access (
+    id,
+    patient_id,
+    caregiver_id,
+    relationship,
+    status,
+    created_at,
+    updated_at,
+    accepted_at
+) VALUES (
+    'access_003',
+    'patient_test_3',
+    'caregiver_test_2',
+    'caregiver',
+    'active',
+    datetime('now', '-15 days'),
+    datetime('now', '-14 days'),
+    datetime('now', '-14 days')
+);

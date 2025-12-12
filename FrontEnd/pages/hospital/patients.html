@@ -1,3 +1,5 @@
+<!-- NOT IN USE -->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -36,8 +38,6 @@
                             class="sidebar-link-icon">🧬</span>Genes</a></li>
                 <li class="sidebar-item"><a href="patients.html" class="sidebar-link"><span
                             class="sidebar-link-icon">👥</span>Patients</a></li>
-                <li class="sidebar-item"><a href="appointments.html" class="sidebar-link"><span
-                            class="sidebar-link-icon">📅</span>Appointments</a></li>
                 <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
                             class="sidebar-link-icon">👤</span>Profile</a></li>
             </ul>
@@ -96,10 +96,6 @@
         async function loadPatients() {
             UI.showLoading('Loading patients...');
             try {
-                const appointments = await API.getAppointments(user.id, 'hospital');
-
-                // Get unique patients from appointments
-                const patientIds = [...new Set(appointments.map(apt => apt.patientId || apt.userId))];
                 const users = Storage.get('users') || [];
 
                 allPatients = users.filter(u => patientIds.includes(u.id) && u.role === 'patient');
