@@ -31,9 +31,9 @@ A privacy-preserving genetic risk assessment platform using Private Set Intersec
    cd BackEnd/Server
 
    Then run either of these commands:
-   node server.js
+   `node server.js`
    OR
-   npm start
+   `npm start`
 
    Server runs at `http://localhost:3001`
 
@@ -42,41 +42,23 @@ A privacy-preserving genetic risk assessment platform using Private Set Intersec
    You can now login/register normally
 
 ## Test Accounts
-| Role         | Email                  | Password    |
-|--------------|------------------------|-------------|
-| Patient      | patient@test.com       | test123     |
-| Hospital     | hospital@test.com      | hospital123 |
-| System Admin | sysadmin@privagene.com | admin123    |
+| Role             | Email                  | Password      |
+|------------------|------------------------|---------------|
+| Patient          | patient@test.com       | test123       |
+| Patient          | mike.wong@email.com    | patient123    |
+| Patient          | jane.smith@email.com   | patient123    |
+| Caregiver        | dean@mail.com          | dean1234      |
+| Caregiver        | bobby@mail.com         | bobby123      |
+| Hospital         | dr.chen@sgh.com.sg     | hospital123   |
+| Hospital         | dr.lim@sgh.com.sg      | hospital123   |
+| Hospital         | hospital@test.com      | hospital123   |
+| Hospital Admin   | cgadmin@sgh.com.sg     | admin123      |
+| Hospital Admin   | sghadmin@sgh.com.sg    | admin123      |
+| System Admin     | sysadmin@privagene.com | admin123      |
+| Security Admin   | security@privagene.com | security123   |
+| Researcher       | researcher@test.com    | researcher123 |
+| Researcher       | george@uow.com         | researcher123 |
 
-## Project Structure
-```
-FYP-PROTOTYPE/
-├── BackEnd/
-│   ├── DBMS/
-│   │   ├── db/
-│   │   │   ├── db.js
-│   │   │   └── migrations.sql
-│   │   ├── middleware/
-│   │   ├── storage/
-│   │   └── app.db
-│   │
-│   └── Server/
-│       ├── services/
-│       │   ├── diseaseService.js
-│       │   ├── psiService.js
-│       │   ├── riskAssessmentService.js
-│       │   └── userService.js
-│       ├── server.js
-│       └── package.json
-│
-└── FrontEnd/
-    ├── css/
-    ├── js/
-    └── pages/
-        ├── patient/
-        ├── hospital/
-        └── system-admin/
-```
 
 ## How PSI Works in PrivaGene
 PrivaGene uses a Diffie-Hellman based Private Set Intersection protocol to securely compare genetic data.
