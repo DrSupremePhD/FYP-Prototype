@@ -990,6 +990,128 @@ const BackendAPI = {
         }
     },
 
+    /**
+     * Get disease count for a specific hospital specialist
+     * @param {string} hospitalId - Hospital specialist user ID
+     * @returns {Promise<number>} Disease count
+     */
+    async getSpecialistDiseaseCount(hospitalId) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning 0');
+            return 0;
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/diseases/specialist-count/${hospitalId}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch specialist disease count');
+            }
+
+            const data = await response.json();
+            return data.count || 0;
+        } catch (error) {
+            console.error('Error fetching specialist disease count:', error);
+            return 0;
+        }
+    },
+
+    /**
+     * Get total disease count for an organization
+     * @param {string} organizationName - Organization name
+     * @returns {Promise<number>} Disease count
+     */
+    async getOrganizationDiseaseCount(organizationName) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning 0');
+            return 0;
+        }
+
+        try {
+            const response = await fetch(
+                `${this.config.baseURL}/api/diseases/organization-count/${encodeURIComponent(organizationName)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch organization disease count');
+            }
+
+            const data = await response.json();
+            return data.count || 0;
+        } catch (error) {
+            console.error('Error fetching organization disease count:', error);
+            return 0;
+        }
+    },
+
+    /**
+     * Get recently uploaded/updated diseases by organization
+     * @param {string} organizationName - Organization name
+     * @param {number} days - Number of days to look back (default 3)
+     * @returns {Promise<Array>} Array of recent diseases
+     */
+    async getRecentDiseasesByOrganization(organizationName, days = 3) {
+        if (!this.config.enabled) {
+            console.log('Backend disabled, returning empty array');
+            return [];
+        }
+
+        try {
+            const url = `${this.config.baseURL}/api/diseases/recent/${encodeURIComponent(organizationName)}?days=${days}`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch recent diseases');
+            }
+
+            const data = await response.json();
+            
+            // Normalize the response for frontend use
+            const diseases = (data.diseases || []).map(d => ({
+                id: d.id,
+                diseaseName: d.disease_name,
+                diseaseCode: d.disease_code,
+                description: d.description,
+                constant: d.constant,
+                geneSymbols: d.gene_symbols || [],
+                geneCount: (d.gene_symbols || []).length,
+                creatorFirstName: d.creator_first_name,
+                creatorLastName: d.creator_last_name,
+                creatorEmail: d.creator_email,
+                creatorName: `${d.creator_first_name || ''} ${d.creator_last_name || ''}`.trim() || 'Unknown',
+                organizationName: d.organization_name,
+                hospitalId: d.hospital_id,
+                createdAt: d.created_at,
+                updatedAt: d.updated_at
+            }));
+
+            return diseases;
+        } catch (error) {
+            console.error('Error fetching recent diseases:', error);
+            return [];
+        }
+    },
+
     // ===================================
     // DISEASE MANAGEMENT (Hospital)
     // ===================================
@@ -1602,7 +1724,7 @@ const BackendAPI = {
 
             const data = await response.json();
             
-            // Map snake_case from backend to camelCase for frontend
+            // Map backend to frontend
             const logs = (data.logs || []).map(log => ({
                 id: log.id,
                 timestamp: log.timestamp,

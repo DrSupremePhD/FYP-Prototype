@@ -24,7 +24,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>Specialist</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>specialist@hospital.com
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5f2c2f3a3c363e33362c2b1f37302c2f362b3e33713c3032">[email&#160;protected]</a>
             </div>
         </div>
 
@@ -51,31 +51,31 @@
                 <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">
                     Welcome, Dr. <span data-user-name>Specialist</span>
                 </h1>
-                <p class="text-secondary">Genetic Counseling Dashboard</p>
+                <p class="text-secondary">Hospital Specialist Dashboard</p>
             </div>
 
             <!-- Stats Overview -->
             <div class="grid grid-cols-2 gap-lg" style="margin-bottom: var(--space-2xl);">
                 <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Genes Uploaded By You</div>
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Diseases Uploaded By You</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--primary-color);"
-                        id="geneCount">0</div>
+                        id="specialistDiseaseCount">0</div>
                 </div>
 
                 <div class="card">
-                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Genes in Hospital</div>
+                    <div class="text-tertiary text-sm" style="margin-bottom: var(--space-xs);">Total Diseases in Hospital</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--warning-color);"
-                        id="pendingReviews">0</div>
+                        id="hospitalDiseaseCount">0</div>
                 </div>
             </div>
             
             <div class="grid grid-cols-1 gap-xl">
                 <!-- Recent Results -->
                 <div class="card">
-                    <div class="card-header" id="recentGeneUploads">
-                        <h3 class="card-title">Recently Uploaded Genes</h3>
+                    <div class="card-header" id="recentDiseaseUploads">
+                        <h3 class="card-title">Recently Uploaded Disease-Gene Entries</h3>
                     </div>
-                    <div id="recentGenes">
+                    <div id="recentDiseaseUploadsResults">
                         <!-- Will be populated by JavaScript -->
                     </div>
                 </div>
@@ -86,7 +86,6 @@
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/api-backend.js"></script>
-    <script src="../../js/api-mock.js"></script>
     <script src="../../js/navigation.js"></script>
 
     <script>
@@ -97,63 +96,159 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
+        // Configuration: Number of days to look back for recent uploads
+        const RECENT_UPLOADS_DAYS = 3;  // Change this value to adjust the time period
+
         async function loadDashboard() {
             try {
-                // BACKEND_INTEGRATION: These API calls will fetch from backend
+                // Get disease count uploaded by this specialist
+                const specialistCount = await BackendAPI.getSpecialistDiseaseCount(user.id);
+                document.getElementById('specialistDiseaseCount').textContent = specialistCount;
 
+                // Handle both snake_case (organization_name) and camelCase (organizationName)
+                const organizationName = user.organizationName || user.organization_name;
 
+                // Get total disease count for the organization
+                if (organizationName) {
+                    const orgCount = await BackendAPI.getOrganizationDiseaseCount(organizationName);
+                    document.getElementById('hospitalDiseaseCount').textContent = orgCount;
 
-                // Get all risk assessments (without filtering by userId)
-                const allUsers = Storage.get('users') || [];
-                const allAssessments = Storage.getRiskAssessments() || [];
-
-                // Pending reviews (assessments without specialist notes)
-                const pending = allAssessments.filter(a => !a.reviewedBy).length;
-                document.getElementById('pendingReviews').textContent = pending;
-
-                // Display today's schedule
-                displayTodaySchedule(todayApts);
-
-                // Display recent activity
-                displayPatientActivity(allAssessments.slice(-5).reverse());
+                    // Get recently uploaded/updated diseases
+                    const recentDiseases = await BackendAPI.getRecentDiseasesByOrganization(
+                        organizationName, 
+                        RECENT_UPLOADS_DAYS
+                    );
+                    displayRecentDiseases(recentDiseases);
+                } else {
+                    console.error('❌ ORGANIZATION NAME MISSING!');
+                    console.error('User object:', user);
+                    console.error('');
+                    console.error('SOLUTION:');
+                    console.error('1. Open DB Browser for SQLite');
+                    console.error('2. Open your app.db file');
+                    console.error('3. Run this SQL:');
+                    console.error(`   UPDATE users SET organization_name = 'Singapore General Hospital' WHERE email = '${user.email}';`);
+                    console.error('4. Logout and login again');
+                    console.error('');
+                    
+                    document.getElementById('hospitalDiseaseCount').textContent = '0';
+                    displayRecentDiseases([]);
+                    
+                    // Show error message in the UI
+                    const errorHtml = `
+                        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: var(--space-lg); margin-bottom: var(--space-lg);">
+                            <h3 style="color: #856404; margin-bottom: var(--space-sm);">⚠️ Organization Name Missing</h3>
+                            <p style="color: #856404; margin-bottom: var(--space-sm);">
+                                Your hospital specialist account doesn't have an organization name set in the database.
+                            </p>
+                            <p style="color: #856404; margin-bottom: var(--space-sm); font-weight: 600;">
+                                To fix this:
+                            </p>
+                            <ol style="color: #856404; margin-left: var(--space-lg);">
+                                <li>Open DB Browser for SQLite</li>
+                                <li>Open your app.db file</li>
+                                <li>Go to "Execute SQL" tab</li>
+                                <li>Run this SQL:<br>
+                                    <code style="background: white; padding: 4px 8px; border-radius: 4px; display: block; margin-top: 8px;">
+                                        UPDATE users SET organization_name = 'Singapore General Hospital' WHERE email = '${user.email}';
+                                    </code>
+                                </li>
+                                <li>Click "Execute" (▶️ button)</li>
+                                <li>Logout and login again</li>
+                            </ol>
+                        </div>
+                    `;
+                    document.getElementById('recentDiseaseUploadsResults').innerHTML = errorHtml;
+                }
 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                UI.showAlert('Failed to load dashboard data', 'error');
+                alert('Failed to load dashboard data. Please try refreshing the page.');
             }
         }
 
+        function displayRecentDiseases(diseases) {
+            const container = document.getElementById('recentDiseaseUploadsResults');
 
-        function displayPatientActivity(assessments) {
-            const container = document.getElementById('patientActivity');
-
-            if (assessments.length === 0) {
+            if (diseases.length === 0) {
                 container.innerHTML = `
           <div class="empty-state" style="padding: var(--space-xl);">
-            <div class="empty-state-icon">📊</div>
-            <div class="empty-state-description">No recent activity</div>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-description">No recent disease uploads in the past ${RECENT_UPLOADS_DAYS} days</div>
           </div>
         `;
                 return;
             }
 
-            container.innerHTML = assessments.map(assessment => {
-                const riskLevel = assessment.overallRisk < 30 ? 'low' : assessment.overallRisk < 70 ? 'medium' : 'high';
+            // Create table to display recent diseases
+            container.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--bg-tertiary); border-bottom: 2px solid var(--border-light);">
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Disease Name</th>
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Disease Code</th>
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Description</th>
+                <th style="padding: var(--space-sm); text-align: center; font-weight: 600;">Constant</th>
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Uploaded/Updated By</th>
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Created</th>
+                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${diseases.map(disease => `
+                <tr style="border-bottom: 1px solid var(--border-light);">
+                  <td style="padding: var(--space-sm); font-weight: 500;">${escapeHtml(disease.diseaseName)}</td>
+                  <td style="padding: var(--space-sm); font-family: monospace; color: var(--text-secondary);">${escapeHtml(disease.diseaseCode)}</td>
+                  <td style="padding: var(--space-sm); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(disease.description || 'No description')}">${escapeHtml(disease.description || 'No description')}</td>
+                  <td style="padding: var(--space-sm); text-align: center;">
+                    <span style="background: var(--primary-light); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-weight: 500;">
+                      ${disease.constant}
+                    </span>
+                  </td>
+                  <td style="padding: var(--space-sm);">
+                    <div style="font-weight: 500;">${escapeHtml(disease.creatorName)}</div>
+                    <div style="font-size: var(--text-sm); color: var(--text-tertiary);">${escapeHtml(disease.creatorEmail)}</div>
+                  </td>
+                  <td style="padding: var(--space-sm); font-size: var(--text-sm); color: var(--text-secondary);">${formatDateTime(disease.createdAt)}</td>
+                  <td style="padding: var(--space-sm); font-size: var(--text-sm); color: var(--text-secondary);">${formatDateTime(disease.updatedAt)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+        }
 
-                return `
-          <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-light);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-weight: 500;">Patient ${assessment.userId}</div>
-                <div class="text-secondary text-sm">New risk assessment • ${UI.formatDate(assessment.computedAt)}</div>
-              </div>
-              <div class="risk-indicator risk-${riskLevel}">
-                ${assessment.overallRisk}% Risk
-              </div>
-            </div>
-          </div>
-        `;
-            }).join('');
+        // Helper function to escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Helper function to format date/time
+        function formatDateTime(isoString) {
+            if (!isoString) return 'N/A';
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         loadDashboard();

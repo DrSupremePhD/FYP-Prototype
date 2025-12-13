@@ -524,6 +524,68 @@ const diseaseService = {
     
     const diseases = await all(sql, [organizationName, term, term, term, term]);
     return this.processDiseases(diseases);
+  },
+
+  /**
+   * Get disease count uploaded by a specific hospital specialist
+   * @param {string} hospitalId - Hospital specialist user ID
+   * @returns {Promise<number>} - Count of diseases uploaded by this specialist
+   */
+  async getDiseaseCountBySpecialist(hospitalId) {
+    const sql = 'SELECT COUNT(DISTINCT id) as count FROM diseases WHERE hospital_id = ?';
+    const result = await get(sql, [hospitalId]);
+    return result ? result.count : 0;
+  },
+
+  /**
+   * Get total disease count for an organization
+   * @param {string} organizationName - Organization name
+   * @returns {Promise<number>} - Total count of diseases for the organization
+   */
+  async getDiseaseCountByOrganization(organizationName) {
+    const sql = `
+      SELECT COUNT(DISTINCT d.id) as count
+      FROM diseases d
+      INNER JOIN users u ON d.hospital_id = u.id
+      WHERE u.organization_name = ? AND u.role = 'hospital'
+    `;
+    const result = await get(sql, [organizationName]);
+    return result ? result.count : 0;
+  },
+
+  /**
+   * Get recently uploaded/updated diseases by organization within a time period
+   * @param {string} organizationName - Organization name
+   * @param {number} days - Number of days to look back (default 3)
+   * @returns {Promise<Array>} - Array of recently uploaded/updated diseases with creator info
+   */
+  async getRecentDiseasesByOrganization(organizationName, days = 3) {
+    // Calculate the date threshold
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+    const thresholdISO = dateThreshold.toISOString();
+
+    const sql = `
+      SELECT d.*, 
+             u.first_name as creator_first_name, 
+             u.last_name as creator_last_name,
+             u.email as creator_email,
+             u.organization_name
+      FROM diseases d
+      INNER JOIN users u ON d.hospital_id = u.id
+      WHERE u.organization_name = ? 
+        AND u.role = 'hospital'
+        AND (d.created_at >= ? OR d.updated_at >= ?)
+      ORDER BY 
+        CASE 
+          WHEN d.updated_at >= ? THEN d.updated_at 
+          ELSE d.created_at 
+        END DESC
+      LIMIT 10
+    `;
+    
+    const diseases = await all(sql, [organizationName, thresholdISO, thresholdISO, thresholdISO]);
+    return this.processDiseases(diseases);
   }
 };
 

@@ -1149,6 +1149,92 @@ app.get('/api/diseases/by-organization/:organizationName/search', async (req, re
   }
 });
 
+// Get disease count for a specific hospital specialist
+app.get('/api/diseases/specialist-count/:hospitalId', async (req, res) => {
+  try {
+    const { hospitalId } = req.params;
+
+    if (!hospitalId) {
+      return res.status(400).json({
+        error: 'Hospital specialist ID is required'
+      });
+    }
+
+    const count = await diseaseService.getDiseaseCountBySpecialist(hospitalId);
+
+    return res.json({
+      success: true,
+      count
+    });
+  } catch (err) {
+    console.error('Get specialist disease count error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve disease count',
+      message: err.message
+    });
+  }
+});
+
+// Get total disease count for an organization
+app.get('/api/diseases/organization-count/:organizationName', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+
+    if (!organizationName) {
+      return res.status(400).json({
+        error: 'Organization name is required'
+      });
+    }
+
+    const count = await diseaseService.getDiseaseCountByOrganization(
+      decodeURIComponent(organizationName)
+    );
+
+    return res.json({
+      success: true,
+      count
+    });
+  } catch (err) {
+    console.error('Get organization disease count error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve organization disease count',
+      message: err.message
+    });
+  }
+});
+
+// Get recently uploaded/updated diseases by organization
+app.get('/api/diseases/recent/:organizationName', async (req, res) => {
+  try {
+    const { organizationName } = req.params;
+    const { days } = req.query;
+
+    if (!organizationName) {
+      return res.status(400).json({
+        error: 'Organization name is required'
+      });
+    }
+
+    const daysNum = days ? parseInt(days) : 3;
+    const diseases = await diseaseService.getRecentDiseasesByOrganization(
+      decodeURIComponent(organizationName),
+      daysNum
+    );
+
+    return res.json({
+      success: true,
+      count: diseases.length,
+      diseases
+    });
+  } catch (err) {
+    console.error('Get recent diseases error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve recent diseases',
+      message: err.message
+    });
+  }
+});
+
 // ===================================
 // RESEARCHER ANALYTICS ENDPOINTS (WITH ROLE PROTECTION)
 // ===================================
