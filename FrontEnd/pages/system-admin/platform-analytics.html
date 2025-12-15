@@ -79,7 +79,9 @@
                     <div class="text-tertiary text-sm">Active Organizations</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--success-color);"
                         id="totalOrgs">0</div>
-                    <div class="text-tertiary text-sm" style="margin-top: var(--space-xs);">5 pending approval</div>
+                    <div class="text-tertiary text-sm" style="margin-top: var(--space-xs);">
+                        <span id="pendingOrgs">0</span> pending approval
+                    </div>
                 </div>
                 <div class="card">
                     <div class="text-tertiary text-sm">System Uptime</div>
@@ -95,12 +97,10 @@
                     <div class="card-header">
                         <h3 class="card-title">User Growth</h3>
                     </div>
-                    <div
-                        style="padding: var(--space-xl); text-align: center; height: 300px; display: flex; align-items: center; justify-content: center;">
-                        <div class="text-tertiary">
-                            <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">📈</div>
-                            <div>Chart visualization placeholder</div>
-                            <div class="text-sm">(Integrate charting library)</div>
+                    <div style="padding: var(--space-xl); height: 300px;">
+                        <canvas id="userGrowthChart" aria-label="User growth chart" role="img"></canvas>
+                        <div id="userGrowthFallback" class="text-tertiary text-sm" style="display:none; text-align:center; padding-top: var(--space-xl);">
+                            Chart unavailable
                         </div>
                     </div>
                 </div>
@@ -110,12 +110,10 @@
                     <div class="card-header">
                         <h3 class="card-title">Assessment Activity</h3>
                     </div>
-                    <div
-                        style="padding: var(--space-xl); text-align: center; height: 300px; display: flex; align-items: center; justify-content: center;">
-                        <div class="text-tertiary">
-                            <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">📊</div>
-                            <div>Chart visualization placeholder</div>
-                            <div class="text-sm">(Integrate charting library)</div>
+                    <div style="padding: var(--space-xl); height: 300px;">
+                        <canvas id="assessmentActivityChart" aria-label="Assessment activity chart" role="img"></canvas>
+                        <div id="assessmentActivityFallback" class="text-tertiary text-sm" style="display:none; text-align:center; padding-top: var(--space-xl);">
+                            Chart unavailable
                         </div>
                     </div>
                 </div>
@@ -146,7 +144,9 @@
 
     <script src="../../js/storage.js"></script>
     <script src="../../js/auth.js"></script>
+    <script src="../../js/api-backend.js"></script>
     <script src="../../js/navigation.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script>
         Auth.requireRole('system_admin');
@@ -156,42 +156,161 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
 
-        async function loadAnalytics() {
-            const users = Storage.get('users') || [];
-            const assessments = Storage.get('risk_assessments') || [];
+        let userGrowthChartInstance = null;
+        let assessmentActivityChartInstance = null;
 
-            // Update key metrics
-            document.getElementById('totalUsers').textContent = users.length;
-            document.getElementById('totalAssessments').textContent = assessments.length;
+        function toShortMonthLabel(monthStr) {
+            // monthStr expected like "YYYY-MM"
+            if (!monthStr || typeof monthStr !== 'string') return String(monthStr || '');
+            const parts = monthStr.split('-');
+            if (parts.length !== 2) return monthStr;
+            const [yyyy, mm] = parts;
+            const date = new Date(Number(yyyy), Number(mm) - 1, 1);
+            if (Number.isNaN(date.getTime())) return monthStr;
+            return date.toLocaleString(undefined, { month: 'short', year: 'numeric' }); // e.g. "Dec 2025"
+        }
 
-            // Count organizations
-            const orgs = new Set();
-            users.filter(u => u.organization).forEach(u => orgs.add(u.organization));
-            document.getElementById('totalOrgs').textContent = orgs.size;
+        function showChartFallback(chartId, fallbackId, message) {
+            const canvas = document.getElementById(chartId);
+            const fallback = document.getElementById(fallbackId);
+            if (canvas) canvas.style.display = 'none';
+            if (fallback) {
+                fallback.style.display = 'block';
+                if (message) fallback.textContent = message;
+            }
+        }
 
-            // Role distribution
-            const roles = ['patient', 'hospital', 'admin', 'researcher'];
-            const roleData = roles.map(role => {
-                const roleUsers = users.filter(u => u.role === role);
-                return {
-                    role: UI.formatRole(role),
-                    active: roleUsers.filter(u => u.status === 'active' || !u.status).length,
-                    pending: roleUsers.filter(u => u.status === 'pending_approval').length,
-                    suspended: roleUsers.filter(u => u.status === 'suspended').length,
-                    total: roleUsers.length
-                };
+        function renderCharts(trends) {
+            // Chart.js not loaded (offline/no CDN/etc)
+            if (typeof Chart === 'undefined') {
+                showChartFallback('userGrowthChart', 'userGrowthFallback', 'Chart unavailable (Chart.js not loaded)');
+                showChartFallback('assessmentActivityChart', 'assessmentActivityFallback', 'Chart unavailable (Chart.js not loaded)');
+                return;
+            }
+
+            const usersByMonth = Array.isArray(trends?.usersByMonth) ? trends.usersByMonth : [];
+            const assessmentsByMonth = Array.isArray(trends?.assessmentsByMonth) ? trends.assessmentsByMonth : [];
+
+            // Merge labels so both charts align on the same month axis if needed
+            const allMonths = Array.from(new Set([
+                ...usersByMonth.map(r => r.month),
+                ...assessmentsByMonth.map(r => r.month)
+            ].filter(Boolean))).sort();
+
+            const labels = allMonths.map(toShortMonthLabel);
+            const usersSeries = allMonths.map(m => {
+                const row = usersByMonth.find(r => r.month === m);
+                return Number(row?.count || 0);
+            });
+            const assessmentsSeries = allMonths.map(m => {
+                const row = assessmentsByMonth.find(r => r.month === m);
+                return Number(row?.count || 0);
             });
 
-            const tbody = document.getElementById('roleDistribution');
-            tbody.innerHTML = roleData.map(data => `
-                <tr>
-                    <td style="font-weight: 500;">${data.role}</td>
-                    <td><span class="badge badge-success">${data.active}</span></td>
-                    <td><span class="badge badge-warning">${data.pending}</span></td>
-                    <td><span class="badge badge-error">${data.suspended}</span></td>
-                    <td style="font-weight: 600;">${data.total}</td>
-                </tr>
-            `).join('');
+            if (labels.length === 0) {
+                showChartFallback('userGrowthChart', 'userGrowthFallback', 'No trend data yet');
+                showChartFallback('assessmentActivityChart', 'assessmentActivityFallback', 'No trend data yet');
+                return;
+            }
+
+            // Destroy existing charts (re-render safe)
+            if (userGrowthChartInstance) userGrowthChartInstance.destroy();
+            if (assessmentActivityChartInstance) assessmentActivityChartInstance.destroy();
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxRotation: 0, autoSkip: true }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            };
+
+            const userCtx = document.getElementById('userGrowthChart');
+            if (userCtx) {
+                userGrowthChartInstance = new Chart(userCtx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Users',
+                            data: usersSeries,
+                            borderColor: '#6D28D9',
+                            backgroundColor: 'rgba(109,40,217,0.15)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+
+            const assessCtx = document.getElementById('assessmentActivityChart');
+            if (assessCtx) {
+                assessmentActivityChartInstance = new Chart(assessCtx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Assessments',
+                            data: assessmentsSeries,
+                            backgroundColor: 'rgba(16,185,129,0.35)',
+                            borderColor: 'rgba(16,185,129,0.9)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+        }
+
+        async function loadAnalytics() {
+            UI.showLoading('Loading analytics...');
+            try {
+                const analytics = await API.getPlatformAnalytics();
+
+                // Update key metrics
+                document.getElementById('totalUsers').textContent = analytics.metrics?.totalUsers ?? 0;
+                document.getElementById('totalAssessments').textContent = analytics.metrics?.totalAssessments ?? 0;
+                document.getElementById('totalOrgs').textContent = analytics.metrics?.activeOrganizations ?? 0;
+                const pendingOrgs = analytics.metrics?.pendingOrganizations ?? 0;
+                const pendingEl = document.getElementById('pendingOrgs');
+                if (pendingEl) pendingEl.textContent = pendingOrgs;
+
+                // Role distribution
+                const roleData = analytics.roleDistribution || [];
+                const tbody = document.getElementById('roleDistribution');
+                tbody.innerHTML = roleData.map(data => `
+                    <tr>
+                        <td style="font-weight: 500;">${Navigation.formatRole(data.role)}</td>
+                        <td><span class="badge badge-success">${data.active || 0}</span></td>
+                        <td><span class="badge badge-warning">${data.pending || 0}</span></td>
+                        <td><span class="badge badge-error">${data.suspended || 0}</span></td>
+                        <td style="font-weight: 600;">${data.total || 0}</td>
+                    </tr>
+                `).join('');
+
+                // Charts
+                renderCharts(analytics.trends);
+            } catch (error) {
+                console.error('Failed to load platform analytics:', error);
+                UI.showAlert(`Failed to load platform analytics: ${error.message}`, 'error');
+            } finally {
+                UI.hideLoading();
+            }
         }
 
         loadAnalytics();

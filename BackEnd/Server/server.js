@@ -18,6 +18,9 @@ const riskAssessmentService = require('./services/riskAssessmentService');
 // For caregiver access
 const caregiverAccessService = require('./services/caregiverAccessService');
 
+// For system admin platform analytics
+const platformAnalyticsService = require('./services/platformAnalyticsService');
+
 
 
 const app = express();
@@ -52,6 +55,22 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     database: 'connected'
   });
+});
+
+// ===================================
+// SYSTEM ADMIN - PLATFORM ANALYTICS
+// ===================================
+app.get('/api/admin/platform-analytics', requireRole(['admin']), async (req, res) => {
+  try {
+    const analytics = await platformAnalyticsService.getPlatformAnalytics();
+    return res.json({ success: true, analytics });
+  } catch (err) {
+    console.error('Platform analytics error:', err);
+    return res.status(500).json({
+      error: 'Failed to retrieve platform analytics',
+      message: err.message
+    });
+  }
 });
 
 // ===================================

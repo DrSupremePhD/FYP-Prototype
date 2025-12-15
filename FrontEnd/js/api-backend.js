@@ -40,6 +40,69 @@ const BackendAPI = {
     },
 
     // ===================================
+    // SYSTEM ADMIN - PLATFORM ANALYTICS
+    // ===================================
+
+    /**
+     * Get platform-wide analytics for system admin
+     * @returns {Promise<Object>} analytics payload
+     */
+    async getPlatformAnalytics() {
+        // If backend disabled, approximate using local storage (legacy behavior)
+        if (!this.config.enabled) {
+            const users = Storage.get('users') || [];
+            const assessments = Storage.get('risk_assessments') || [];
+            const orgs = new Set();
+            users.filter(u => u.organization || u.organization_name).forEach(u => orgs.add(u.organization || u.organization_name));
+
+            // Aggregate role distribution from local storage
+            const roleMap = {};
+            users.forEach(u => {
+                const role = u.role || 'unknown';
+                const status = (u.status || 'active').toLowerCase();
+                if (!roleMap[role]) roleMap[role] = { role, active: 0, pending: 0, suspended: 0, total: 0 };
+                roleMap[role].total++;
+                if (status === 'pending_approval') roleMap[role].pending++;
+                else if (status === 'suspended') roleMap[role].suspended++;
+                else roleMap[role].active++;
+            });
+
+            return {
+                metrics: {
+                    totalUsers: users.length,
+                    totalAssessments: assessments.length,
+                    activeOrganizations: orgs.size,
+                    pendingOrganizations: 0
+                },
+                roleDistribution: Object.values(roleMap),
+                trends: { usersByMonth: [], assessmentsByMonth: [] }
+            };
+        }
+
+        try {
+            const user = this.getCurrentUser();
+            const response = await fetch(`${this.config.baseURL}/api/admin/platform-analytics`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || 'Failed to load platform analytics');
+            }
+
+            const data = await response.json();
+            return data.analytics;
+        } catch (error) {
+            console.error('Error loading platform analytics:', error);
+            throw error;
+        }
+    },
+
+    // ===================================
     // USER MANAGEMENT
     // ===================================
 
