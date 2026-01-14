@@ -189,6 +189,27 @@
             text-align: center;
             padding: var(--space-3xl);
         }
+
+        /* NEW: Style for Run Assessment section */
+        .run-assessment-card {
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--secondary-rgb), 0.1));
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-2xl);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .run-assessment-info {
+            flex: 1;
+        }
+
+        .run-assessment-info h3 {
+            font-size: var(--text-xl);
+            margin-bottom: var(--space-xs);
+        }
     </style>
 </head>
 
@@ -228,6 +249,19 @@
 
             <div class="patient-header-card" id="patientHeader">
                 <div class="loading-state">Loading patient data...</div>
+            </div>
+
+            <!-- NEW: Run Risk Assessment Section -->
+            <div class="run-assessment-card">
+                <div class="run-assessment-info">
+                    <h3>🧪 Run Risk Assessment</h3>
+                    <p class="text-secondary" style="margin: 0; font-size: var(--text-sm);">
+                        Run a private risk assessment on behalf of this patient
+                    </p>
+                </div>
+                <button id="runAssessmentBtn" class="btn btn-primary btn-lg">
+                    Start Risk Assessment →
+                </button>
             </div>
 
             <div class="privacy-notice-card">
@@ -295,6 +329,11 @@
             UI.showAlert('No patient specified', 'error');
             setTimeout(() => window.location.href = 'dashboard.html', 2000);
         }
+
+        // NEW: Start Assessment Button - Redirects to upload page
+        document.getElementById('runAssessmentBtn').addEventListener('click', () => {
+            window.location.href = `upload-gene.html?patientId=${patientId}`;
+        });
 
         // Store data globally for use across functions
         let patientData = null;

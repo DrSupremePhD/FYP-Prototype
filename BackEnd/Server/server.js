@@ -1831,6 +1831,81 @@ app.get('/api/researcher/datasets/aggregate-stats', async (req, res) => {
 });
 
 
+/**
+ * Caregiver runs risk assessment on behalf of patient
+ * POST /api/caregiver/run-assessment
+ */
+app.post('/api/caregiver/run-assessment', async (req, res) => {
+    try {
+        const { patientId, diseaseId, matchCount, matchedGenes, riskPercentage } = req.body;
+        const caregiverId = req.headers['x-user-id'];
+
+        if (!caregiverId) {
+            return res.status(401).json({ error: 'User ID not provided' });
+        }
+
+        // Verify caregiver has active access to this patient
+        const access = await caregiverAccessService.activeOrPendingAccessExists(patientId, caregiverId);
+        
+        if (!access || access.status !== 'active') {
+            return res.status(403).json({ error: 'You do not have active access to this patient' });
+        }
+
+        // Create risk assessment for the patient (not the caregiver)
+        const assessment = await riskAssessmentService.createAssessment({
+            userId: patientId,  // Store under patient's ID
+            diseaseId,
+            overallRisk: riskPercentage,
+            matchCount,
+            matchedGenes,
+            riskPercentage
+        });
+
+        console.log(`Caregiver ${caregiverId} ran assessment for patient ${patientId}, disease ${diseaseId}`);
+
+        res.json({ 
+            success: true, 
+            assessment,
+            message: 'Risk assessment completed for patient'
+        });
+
+    } catch (error) {
+        console.error('Error in caregiver run assessment:', error);
+        res.status(500).json({ error: error.message || 'Failed to run assessment' });
+    }
+});
+
+/**
+ * Verify caregiver has active access to patient
+ * GET /api/caregiver/verify-access/:patientId
+ */
+app.get('/api/caregiver/verify-access/:patientId', async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        const caregiverId = req.headers['x-user-id'];
+
+        if (!caregiverId) {
+            return res.status(401).json({ error: 'User ID not provided' });
+        }
+
+        const access = await caregiverAccessService.activeOrPendingAccessExists(patientId, caregiverId);
+        
+        if (!access || access.status !== 'active') {
+            return res.json({ hasAccess: false });
+        }
+
+        res.json({ 
+            hasAccess: true,
+            relationship: access.relationship,
+            acceptedAt: access.accepted_at
+        });
+
+    } catch (error) {
+        console.error('Error verifying caregiver access:', error);
+        res.status(500).json({ error: 'Failed to verify access' });
+    }
+});
+
 // ===================================
 // DISEASE CATEGORY ENDPOINTS
 // ===================================

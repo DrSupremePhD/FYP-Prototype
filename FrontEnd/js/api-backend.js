@@ -2584,10 +2584,68 @@ const BackendAPI = {
             console.error('Error fetching patient full view:', error);
             throw error;
         }
+    },
+
+    /**
+     * Caregiver runs risk assessment on behalf of patient
+     */
+    async caregiverRunAssessment(patientId, diseaseId, matchCount, matchedGenes, riskPercentage) {
+        const user = this.getCurrentUser();
+        if (!user) {
+            throw new Error('User not logged in');
+        }
+
+        const response = await fetch(`${this.config.baseURL}/api/caregiver/run-assessment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Role': user.role,
+                'X-User-Id': user.id
+            },
+            body: JSON.stringify({
+                patientId,
+                diseaseId,
+                matchCount,
+                matchedGenes,
+                riskPercentage
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to run assessment for patient');
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Verify caregiver has active access to patient
+     */
+    async verifyCaregiverAccess(patientId) {
+        const user = this.getCurrentUser();
+        if (!user) {
+            throw new Error('User not logged in');
+        }
+
+        const response = await fetch(`${this.config.baseURL}/api/caregiver/verify-access/${patientId}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Role': user.role,
+                'X-User-Id': user.id
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to verify access');
+        }
+
+        return await response.json();
     }
 
-
 };
+
+
 
 // Make it available as both BackendAPI and API for compatibility
 window.BackendAPI = BackendAPI;

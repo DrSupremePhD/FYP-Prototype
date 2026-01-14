@@ -10,7 +10,7 @@ function corsMiddleware(req, res, next) {
     }
 
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Role, X-Session-ID');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Role, X-User-Id, X-Session-ID'); // ADDED X-User-Id
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Assessment - PrivaGene Caregiver</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/components.css">
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="../../index.html"
+                style="display: flex; align-items: center; gap: var(--space-sm); text-decoration: none;">
+                <span style="font-size: var(--text-3xl);">🧬</span>
+                <span style="font-size: var(--text-xl); font-weight: 700; color: var(--primary-color);">PrivaGene</span>
+            </a>
+        </div>
+
+        <div
+            style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
+            <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
+            <div style="margin-top: var(--space-sm);"><span class="badge badge-info">Caregiver</span></div>
+        </div>
+
+        <nav>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item"><a href="dashboard.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">📊</span>Dashboard</a></li>
+                <li class="sidebar-item"><a href="my-patients.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👥</span>My Patients</a></li>
+                <li class="sidebar-item"><a href="profile.html" class="sidebar-link"><span
+                            class="sidebar-link-icon">👤</span>Profile</a></li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;"><button id="logout-btn" class="sidebar-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer;"><span
+                    class="sidebar-link-icon">🚪</span>Logout</button></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-with-sidebar">
+        <div class="container-narrow">
+            <!-- Back button with patient context -->
+            <a id="backLink" href="my-patients.html" class="back-link">← Back to My Patients</a>
+
+            <div style="margin-bottom: var(--space-2xl); margin-top: var(--space-lg);">
+                <!-- Patient context banner -->
+                <div class="alert alert-info" style="margin-bottom: var(--space-lg);">
+                    <span class="alert-icon">👤</span>
+                    <div class="alert-content">
+                        <div class="alert-title">Running Assessment For</div>
+                        <p id="patientContext">Loading patient information...</p>
+                    </div>
+                </div>
+
+                <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Select Disease Categories</h1>
+                <p class="text-secondary">Choose which disease categories to assess risk for</p>
+            </div>
+
+            <div class="alert alert-warning" id="no-upload-warning"
+                style="margin-bottom: var(--space-2xl); display: none;">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <div class="alert-title">No Genetic Data Found</div>
+                    <p>Please upload the patient's genetic data before running an assessment. 
+                        <a id="uploadLink" href="#" style="color: var(--warning-color); text-decoration: underline;">Upload Now</a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card" id="selection-card">
+                <div class="card-header">
+                    <h3 class="card-title">Available Disease Categories</h3>
+                    <div class="text-secondary text-sm">Select one or more categories to compute risk</div>
+                </div>
+
+                <div id="categories-list">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+
+                <div class="card-footer">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="text-secondary">
+                            <span id="selectedCount">0</span> categories selected
+                        </div>
+                        <button id="computeBtn" class="btn btn-primary btn-lg" disabled>
+                            Compute Risk Assessment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/storage.js"></script>
+    <script src="../../js/api-backend.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/navigation.js"></script>
+    <script src="../../js/run-psi.js"></script>
+
+    <script>
+        let categoriesList = [];
+
+        Auth.requireRole('caregiver');
+        const user = Auth.getCurrentUser();
+        Navigation.displayUserInfo(user);
+        Navigation.setActiveNav();
+
+        document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
+
+        // Get patient ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('patientId');
+
+        if (!patientId) {
+            alert('No patient selected');
+            window.location.href = 'my-patients.html';
+        }
+
+        // Update back link and upload link
+        document.getElementById('backLink').href = `patient-view.html?patientId=${patientId}`;
+        document.getElementById('uploadLink').href = `upload-gene.html?patientId=${patientId}`;
+
+        const selectedCategories = new Set();
+        const computeBtn = document.getElementById('computeBtn');
+        const selectedCount = document.getElementById('selectedCount');
+
+        // Load patient information for context
+        let patientData = null;
+
+        async function loadPatientContext() {
+            try {
+                patientData = await API.getUserById(patientId);
+                const firstName = patientData.first_name || patientData.firstName || '';
+                const lastName = patientData.last_name || patientData.lastName || '';
+                const fullName = `${firstName} ${lastName}`.trim() || patientData.email;
+                
+                document.getElementById('patientContext').innerHTML = `
+                    <strong>${fullName}</strong> (${patientData.email})
+                `;
+            } catch (error) {
+                console.error('Error loading patient context:', error);
+                document.getElementById('patientContext').textContent = 'Patient information unavailable';
+            }
+        }
+
+        loadPatientContext();
+
+        async function loadCategories() {
+            try {
+                // Check if genes are stored for this patient
+                const patientGenes = localStorage.getItem(`patient_${patientId}_genes`);
+                const mappedGenes = localStorage.getItem("mappedGeneSymbols");
+
+                if (!patientGenes && !mappedGenes) {
+                    document.getElementById('no-upload-warning').style.display = 'flex';
+                    document.getElementById('selection-card').style.display = 'none';
+                    return;
+                }
+
+                // If genes exist, ensure they're in the standard location for PSI
+                if (patientGenes && !mappedGenes) {
+                    localStorage.setItem("mappedGeneSymbols", patientGenes);
+                }
+
+                // Fetch disease categories from backend database
+                const categories = await API.getDiseaseCategories();
+                console.log('Categories received:', categories);
+                const container = document.getElementById('categories-list');
+                
+                categoriesList = categories;
+
+                if (categories.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: var(--space-xl);">
+                            <div class="empty-state-icon">🔬</div>
+                            <div class="empty-state-description">No disease categories available yet</div>
+                            <p class="text-secondary">Please check back later or contact support.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = categories.map(category => `
+                    <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
+                        <input type="checkbox" value="${category.id}" class="category-checkbox" style="margin-right: var(--space-md);">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
+                            <div class="text-secondary text-sm">${category.description || 'No description available'}</div>
+                            <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
+                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                                    🏥 Provider: ${category.hospitalName || 'Unknown'}
+                                </span>
+                                ${category.diseaseCode ? `
+                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">
+                                    Code: ${category.diseaseCode}
+                                </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </label>
+                `).join('');
+
+                // Add change listeners
+                document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            selectedCategories.add(checkbox.value);
+                        } else {
+                            selectedCategories.delete(checkbox.value);
+                        }
+                        updateSelection();
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                UI.showAlert('Failed to load disease categories: ' + error.message, 'error');
+            }
+        }
+
+        function updateSelection() {
+            selectedCount.textContent = selectedCategories.size;
+            computeBtn.disabled = selectedCategories.size === 0;
+        }
+
+        computeBtn.addEventListener("click", async () => {
+            const selectedDiseaseID = Array.from(selectedCategories);
+            console.log("====> selectedDiseaseID:", selectedDiseaseID);
+
+            if (selectedDiseaseID.length === 0) {
+                UI.showAlert("Please select at least one disease", "error");
+                return;
+            }
+
+            computeBtn.disabled = true;
+            computeBtn.textContent = "Computing...";
+
+            try {
+                // Ensure patient genes are in the standard location for PSI
+                const patientGenes = localStorage.getItem(`patient_${patientId}_genes`);
+                if (patientGenes) {
+                    localStorage.setItem("mappedGeneSymbols", patientGenes);
+                }
+
+                UI.showLoading("Running Private Set Intersection...");
+
+                const allResults = [];
+
+                // Loop through diseases and run PSI one-by-one (same as patient flow)
+                for (const diseaseID of selectedDiseaseID) {
+                    console.log("🔄 Running PSI for:", diseaseID);
+
+                    // Use the SAME runPSI function as patients
+                    const result = await runPSI(diseaseID);
+
+                    allResults.push({
+                        disease: diseaseID,
+                        result: result
+                    });
+                }
+
+                console.log("🟩 Final aggregated PSI results:", allResults);
+
+                // Save results to backend database via caregiver endpoint
+                for (const entry of allResults) {
+                    await API.caregiverRunAssessment(
+                        patientId,
+                        entry.disease,
+                        entry.result.matchCount,
+                        entry.result.matches,
+                        entry.result.riskPercentage
+                    );
+                }
+
+                UI.hideLoading();
+                UI.showAlert("Risk assessment completed successfully!", "success");
+
+                // Redirect back to patient view after a moment
+                setTimeout(() => {
+                    window.location.href = `patient-view.html?patientId=${patientId}`;
+                }, 1500);
+
+            } catch (error) {
+                console.error("PSI Error:", error);
+                UI.showAlert("PSI computation failed: " + error.message, "error");
+                computeBtn.disabled = false;
+                computeBtn.textContent = "Compute Risk Assessment";
+                UI.hideLoading();
+            }
+        });
+
+        loadCategories();
+    </script>
+</body>
+
+</html>
