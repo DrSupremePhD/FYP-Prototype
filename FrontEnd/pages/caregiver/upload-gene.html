@@ -11,6 +11,107 @@
     <link rel="stylesheet" href="../../css/components.css">
 </head>
 
+<style>
+.permission-denied-container {
+    max-width: 500px;
+    margin: var(--space-xl) auto;
+    text-align: center;
+    padding: var(--space-lg);
+}
+
+.permission-denied-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-md);
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+}
+
+.permission-denied-title {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.permission-denied-message {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+    line-height: 1.5;
+}
+
+.permission-denied-instructions {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    margin: var(--space-md) 0;
+    text-align: left;
+}
+
+.permission-denied-instructions h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.permission-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    font-size: var(--text-sm);
+}
+
+.permission-step:last-child {
+    margin-bottom: 0;
+}
+
+.permission-step-number {
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+    font-size: 11px;
+}
+
+.permission-step-text {
+    flex: 1;
+    padding-top: 1px;
+}
+
+.permission-step-text strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--text-sm);
+}
+
+.permission-step-text .text-secondary {
+    font-size: var(--text-xs);
+}
+
+.permission-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: center;
+    margin-top: var(--space-md);
+}
+</style>
+
 <body>
     <!-- Sidebar -->
     <aside class="sidebar">
@@ -222,6 +323,10 @@ x y z         (too vague, not gene symbols)
                 document.getElementById('patientContext').innerHTML = `
                     <strong>${fullName}</strong> (${patientData.email})
                 `;
+
+            // Check assessment permission (New)
+            await checkAssessmentPermission();
+
             } catch (error) {
                 console.error('Error loading patient context:', error);
                 document.getElementById('patientContext').textContent = 'Patient information unavailable';
@@ -229,6 +334,97 @@ x y z         (too vague, not gene symbols)
         }
 
         loadPatientContext();
+
+        async function checkAssessmentPermission() {
+            try {
+                const access = await API.verifyCaregiverAccess(patientId);
+                
+                if (!access.hasAccess) {
+                    alert('You no longer have access to this patient');
+                    window.location.href = 'my-patients.html';
+                    return false;
+                }
+                
+                const patients = await API.getPatientsForCaregiver(user.id, 'active');
+                const patientAccess = patients.patients.find(p => p.patient_id === patientId);
+                
+                if (!patientAccess) {
+                    alert('Access details not found');
+                    window.location.href = 'my-patients.html';
+                    return false;
+                }
+                
+                const canRunAssessments = patientAccess.can_run_assessments || patientAccess.canRunAssessments || 0;
+                
+                if (!canRunAssessments) {
+                    const firstName = patientData?.first_name || patientData?.firstName || 'the patient';
+                    const fullName = `${patientData?.first_name || patientData?.firstName || ''} ${patientData?.last_name || patientData?.lastName || ''}`.trim() || 'the patient';
+                    
+                    document.getElementById('upload-card').innerHTML = `
+                        <div class="permission-denied-container">
+                            <div class="permission-denied-icon">🔒</div>
+                            
+                            <h2 class="permission-denied-title">Permission Required</h2>
+                            
+                            <p class="permission-denied-message">
+                                <strong>${fullName}</strong> hasn't granted permission to run assessments.
+                            </p>
+                            
+                            <div class="permission-denied-instructions">
+                                <h4><span>📋</span><span>How to Get Permission</span></h4>
+                                
+                                <div class="permission-step">
+                                    <div class="permission-step-number">1</div>
+                                    <div class="permission-step-text">
+                                        <strong>Ask ${firstName}</strong>
+                                        <span class="text-secondary">Contact them to enable permissions</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="permission-step">
+                                    <div class="permission-step-number">2</div>
+                                    <div class="permission-step-text">
+                                        <strong>Family Access Page</strong>
+                                        <span class="text-secondary">They open their Family Access settings</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="permission-step">
+                                    <div class="permission-step-number">3</div>
+                                    <div class="permission-step-text">
+                                        <strong>Toggle ON</strong>
+                                        <span class="text-secondary">"Can run risk assessments" for you</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-actions">
+                                <a href="patient-view.html?patientId=${patientId}" class="btn btn-secondary btn-sm">
+                                    ← Back
+                                </a>
+                                <button onclick="location.reload()" class="btn btn-primary btn-sm">
+                                    🔄 Retry
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    const fileInputEl = document.getElementById('fileInput');
+                    const uploadBtnEl = document.getElementById('uploadBtn');
+                    if (fileInputEl) fileInputEl.disabled = true;
+                    if (uploadBtnEl) uploadBtnEl.disabled = true;
+                    
+                    return false;
+                }
+                
+                return true;
+                
+            } catch (error) {
+                console.error('Error checking assessment permission:', error);
+                return false;
+            }
+        }
+
 
         // File upload logic (same as patient page)
         const dropZone = document.getElementById('dropZone');

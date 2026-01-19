@@ -241,6 +241,26 @@
                 return;
             }
 
+            // Check permission before running (New)
+            try {
+                const patients = await API.getPatientsForCaregiver(user.id, 'active');
+                const patientAccess = patients.patients.find(p => p.patient_id === patientId);
+                
+                const canRunAssessments = patientAccess?.can_run_assessments || patientAccess?.canRunAssessments || 0;
+                
+                if (!canRunAssessments) {
+                    UI.showAlert(
+                        "The patient has revoked your permission to run assessments. Please ask them to re-enable it in their Family Access settings.",
+                        "error"
+                    );
+                    return;
+                }
+            } catch (error) {
+                console.error('Error checking permission:', error);
+                UI.showAlert("Failed to verify permissions", "error");
+                return;
+            }
+
             computeBtn.disabled = true;
             computeBtn.textContent = "Computing...";
 

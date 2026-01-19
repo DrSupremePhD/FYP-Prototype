@@ -898,6 +898,7 @@ CREATE TABLE IF NOT EXISTS caregiver_access (
   caregiver_id TEXT NOT NULL,
   relationship TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
+  can_run_assessments INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   accepted_at TEXT,
@@ -912,6 +913,7 @@ CREATE TABLE IF NOT EXISTS caregiver_access (
 CREATE INDEX IF NOT EXISTS idx_caregiver_access_patient ON caregiver_access(patient_id);
 CREATE INDEX IF NOT EXISTS idx_caregiver_access_caregiver ON caregiver_access(caregiver_id);
 CREATE INDEX IF NOT EXISTS idx_caregiver_access_status ON caregiver_access(status);
+CREATE INDEX IF NOT EXISTS idx_caregiver_access_can_run_assessments ON caregiver_access(can_run_assessments); -- For permission checks
 
 
 -- ===================================
@@ -1033,3 +1035,10 @@ INSERT OR IGNORE INTO caregiver_access (
     datetime('now', '-14 days'),
     datetime('now', '-14 days')
 );
+
+-- Add can_run_assessments column to caregiver_access table
+-- This allows patients to control whether caregivers can initiate PSI risk assessments
+-- ALTER TABLE caregiver_access ADD COLUMN can_run_assessments INTEGER DEFAULT 0;
+
+-- Create index for faster permission checks
+CREATE INDEX IF NOT EXISTS idx_caregiver_access_can_run_assessments ON caregiver_access(can_run_assessments);

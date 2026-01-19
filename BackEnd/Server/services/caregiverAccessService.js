@@ -52,6 +52,7 @@ async function getCaregiversForPatient(patientId, status = null) {
             ca.updated_at,
             ca.accepted_at,
             ca.revoked_at,
+            ca.can_run_assessments,
             u.email as caregiver_email,
             u.first_name as caregiver_first_name,
             u.last_name as caregiver_last_name,
@@ -86,6 +87,7 @@ async function getPatientsForCaregiver(caregiverId, status = null) {
             ca.updated_at,
             ca.accepted_at,
             ca.revoked_at,
+            ca.can_run_assessments,
             u.email as patient_email,
             u.first_name as patient_first_name,
             u.last_name as patient_last_name,
@@ -117,10 +119,10 @@ async function accessExists(patientId, caregiverId) {
     return await get(sql, [patientId, caregiverId]);
 }
 
-// Check if an active or pending access exists
+
 async function activeOrPendingAccessExists(patientId, caregiverId) {
     const sql = `
-        SELECT id, status FROM caregiver_access 
+        SELECT id, status, can_run_assessments FROM caregiver_access 
         WHERE patient_id = ? AND caregiver_id = ? 
         AND status IN ('active', 'pending')
     `;
@@ -299,6 +301,29 @@ async function reInviteCaregiver(patientId, caregiverId, relationship) {
     }
 }
 
+async function updateAssessmentPermission(accessId, patientId, canRunAssessments) {
+    const now = new Date().toISOString();
+    
+    const access = await get(
+        'SELECT * FROM caregiver_access WHERE id = ? AND patient_id = ?',
+        [accessId, patientId]
+    );
+    
+    if (!access) {
+        throw new Error('Access record not found');
+    }
+    
+    const sql = `
+        UPDATE caregiver_access 
+        SET can_run_assessments = ?, updated_at = ?
+        WHERE id = ?
+    `;
+    
+    await run(sql, [canRunAssessments ? 1 : 0, now, accessId]);
+    
+    return await getAccessById(accessId);
+}
+
 module.exports = {
     createAccess,
     getAccessById,
@@ -313,5 +338,6 @@ module.exports = {
     updateRelationship,
     getCaregiverCountsForPatient,
     getPatientCountsForCaregiver,
-    reInviteCaregiver
+    reInviteCaregiver,
+    updateAssessmentPermission
 };

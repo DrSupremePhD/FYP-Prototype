@@ -2641,6 +2641,32 @@ const BackendAPI = {
         }
 
         return await response.json();
+    },
+
+    async updateCaregiverAssessmentPermission(accessId, canRunAssessments) {
+        const user = this.getCurrentUser();
+        if (!user) {
+            throw new Error('User not logged in');
+        }
+
+        const response = await fetch(`${this.config.baseURL}/api/caregiver-access/${accessId}/assessment-permission`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Role': user.role,
+                'X-User-Id': user.id
+            },
+            body: JSON.stringify({
+                canRunAssessments
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update assessment permission');
+        }
+
+        return await response.json();
     }
 
 };

@@ -1746,9 +1746,47 @@ app.get('/api/caregiver-access/patient/:patientId/full-view', async (req, res) =
   }
 });
 
-
 app.listen(PORT, () => {
   console.log(`PrivaGene DB service running on http://localhost:${PORT}`);
+});
+
+app.patch('/api/caregiver-access/:accessId/assessment-permission', async (req, res) => {
+    try {
+        const { accessId } = req.params;
+        const { canRunAssessments } = req.body;
+        const patientId = req.headers['x-user-id'];
+
+        if (!patientId) {
+            return res.status(401).json({ error: 'User ID not provided' });
+        }
+
+        if (typeof canRunAssessments !== 'boolean') {
+            return res.status(400).json({ 
+                error: 'Invalid permission value',
+                message: 'canRunAssessments must be true or false'
+            });
+        }
+
+        const updatedAccess = await caregiverAccessService.updateAssessmentPermission(
+            accessId,
+            patientId,
+            canRunAssessments
+        );
+
+        console.log(`Patient ${patientId} ${canRunAssessments ? 'granted' : 'revoked'} assessment permission for access ${accessId}`);
+
+        res.json({
+            success: true,
+            access: updatedAccess,
+            message: `Assessment permission ${canRunAssessments ? 'granted' : 'revoked'}`
+        });
+
+    } catch (error) {
+        console.error('Error updating assessment permission:', error);
+        res.status(500).json({ 
+            error: error.message || 'Failed to update assessment permission' 
+        });
+    }
 });
 
 // ===================================
@@ -1849,6 +1887,14 @@ app.post('/api/caregiver/run-assessment', async (req, res) => {
         
         if (!access || access.status !== 'active') {
             return res.status(403).json({ error: 'You do not have active access to this patient' });
+        }
+
+        // After verifying active access, add this:
+        if (!access.can_run_assessments) {
+            return res.status(403).json({ 
+                error: 'Permission denied',
+                message: 'The patient has not granted you permission to run assessments. Please ask them to enable this permission in their Family Access settings.'
+            });
         }
 
         // Create risk assessment for the patient (not the caregiver)
