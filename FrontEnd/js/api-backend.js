@@ -230,6 +230,39 @@ const BackendAPI = {
      */
     async activateUser(userId) {
         return await this.updateUserStatus(userId, 'active');
+
+    },
+    /**
+     * Update user profile
+     * @param {string} userId - User ID
+     * @param {Object} updates - Fields to update (firstName, lastName, phone, dateOfBirth, etc.)
+     * @returns {Promise<Object>} Updated user
+     */
+    async updateUserProfile(userId, updates) {
+        if (!this.config.enabled) {
+            return Storage.updateUser(userId, updates);
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update profile');
+            }
+
+            const data = await response.json();
+            return data.user;
+        } catch (error) {
+            console.error('Error updating user profile:', error);
+            throw error;
+        }
     },
 
     /**
