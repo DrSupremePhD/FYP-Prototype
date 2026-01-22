@@ -21,13 +21,16 @@ CREATE TABLE IF NOT EXISTS users (
   research_consent INTEGER DEFAULT 0,  -- NEW: 0 = no consent, 1 = consented
   status TEXT DEFAULT 'active',
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,                     -- NEW: Timestamp when user was soft deleted
+  deletion_reason TEXT                 -- NEW: Reason for deletion
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_research_consent ON users(research_consent);  -- NEW: Index for filtering consented users
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);              -- NEW: Index for soft delete queries
 
 -- Add research_consent column to existing users table if it doesn't exist
 -- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we handle this gracefully
@@ -1041,4 +1044,652 @@ INSERT OR IGNORE INTO caregiver_access (
 -- ALTER TABLE caregiver_access ADD COLUMN can_run_assessments INTEGER DEFAULT 0;
 
 -- Create index for faster permission checks
-CREATE INDEX IF NOT EXISTS idx_caregiver_access_can_run_assessments ON caregiver_access(can_run_assessments);
+
+-- ===================================
+-- EXPANDED SEED DATA (CORRECTED)
+-- ===================================
+
+-- ===================================
+-- HOSPITAL ADMINS (admin role)
+-- ===================================
+
+-- Singapore General Hospital Admin
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, status, research_consent, created_at, updated_at
+) VALUES (
+    'admin_sgh_001',
+    'admin@sgh.com.sg',
+    'admin123',
+    'admin',
+    'Sarah',
+    'Tan',
+    'Singapore General Hospital',
+    'active',
+    0,
+    datetime('now', '-180 days'),
+    datetime('now', '-5 days')
+);
+
+-- National University Hospital Admin
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, status, research_consent, created_at, updated_at
+) VALUES (
+    'admin_nuh_001',
+    'admin@nuh.edu.sg',
+    'admin123',
+    'admin',
+    'David',
+    'Lim',
+    'National University Hospital',
+    'active',
+    0,
+    datetime('now', '-200 days'),
+    datetime('now', '-10 days')
+);
+
+-- Tan Tock Seng Hospital Admin  
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, status, research_consent, created_at, updated_at
+) VALUES (
+    'admin_ttsh_001',
+    'admin@ttsh.com.sg',
+    'admin123',
+    'admin',
+    'Michelle',
+    'Wong',
+    'Tan Tock Seng Hospital',
+    'active',
+    0,
+    datetime('now', '-150 days'),
+    datetime('now', '-3 days')
+);
+
+-- Mount Elizabeth Hospital Admin
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, status, research_consent, created_at, updated_at
+) VALUES (
+    'admin_meh_001',
+    'admin@mountelizabeth.com.sg',
+    'admin123',
+    'admin',
+    'Jennifer',
+    'Chen',
+    'Mount Elizabeth Hospital',
+    'active',
+    0,
+    datetime('now', '-120 days'),
+    datetime('now', '-7 days')
+);
+
+-- Raffles Hospital Admin
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, status, research_consent, created_at, updated_at
+) VALUES (
+    'admin_raffles_001',
+    'admin@rafflesmedical.com',
+    'admin123',
+    'admin',
+    'Robert',
+    'Koh',
+    'Raffles Hospital',
+    'active',
+    0,
+    datetime('now', '-90 days'),
+    datetime('now', '-2 days')
+);
+
+-- ===================================
+-- HOSPITAL SPECIALISTS (hospital role)
+-- ===================================
+
+-- SGH Specialists
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_sgh_001',
+    'dr.tan@sgh.com.sg',
+    'doctor123',
+    'hospital',
+    'Kevin',
+    'Tan',
+    'Singapore General Hospital',
+    'Cardiology',
+    'MD-SGH-2015-001',
+    'active',
+    0,
+    datetime('now', '-150 days'),
+    datetime('now', '-1 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_sgh_002',
+    'dr.lim@sgh.com.sg',
+    'doctor123',
+    'hospital',
+    'Rachel',
+    'Lim',
+    'Singapore General Hospital',
+    'Oncology',
+    'MD-SGH-2017-045',
+    'active',
+    0,
+    datetime('now', '-140 days'),
+    datetime('now', '-2 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_sgh_003',
+    'dr.ng@sgh.com.sg',
+    'doctor123',
+    'hospital',
+    'Benjamin',
+    'Ng',
+    'Singapore General Hospital',
+    'Neurology',
+    'MD-SGH-2018-092',
+    'active',
+    0,
+    datetime('now', '-130 days'),
+    datetime('now')
+);
+
+-- NUH Specialists
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_nuh_001',
+    'dr.chan@nuh.edu.sg',
+    'doctor123',
+    'hospital',
+    'Emily',
+    'Chan',
+    'National University Hospital',
+    'Genetics',
+    'MD-NUH-2016-023',
+    'active',
+    0,
+    datetime('now', '-160 days'),
+    datetime('now', '-3 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_nuh_002',
+    'dr.wong@nuh.edu.sg',
+    'doctor123',
+    'hospital',
+    'Marcus',
+    'Wong',
+    'National University Hospital',
+    'Endocrinology',
+    'MD-NUH-2019-067',
+    'active',
+    0,
+    datetime('now', '-145 days'),
+    datetime('now', '-1 days')
+);
+
+-- TTSH Specialists
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_ttsh_001',
+    'dr.lee@ttsh.com.sg',
+    'doctor123',
+    'hospital',
+    'Stephanie',
+    'Lee',
+    'Tan Tock Seng Hospital',
+    'Cardiology',
+    'MD-TTSH-2020-011',
+    'active',
+    0,
+    datetime('now', '-100 days'),
+    datetime('now', '-4 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_ttsh_002',
+    'dr.kumar@ttsh.com.sg',
+    'doctor123',
+    'hospital',
+    'Rajesh',
+    'Kumar',
+    'Tan Tock Seng Hospital',
+    'Infectious Disease',
+    'MD-TTSH-2018-034',
+    'active',
+    0,
+    datetime('now', '-110 days'),
+    datetime('now', '-2 days')
+);
+
+-- Mount Elizabeth Specialists
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_meh_001',
+    'dr.zhao@mountelizabeth.com.sg',
+    'doctor123',
+    'hospital',
+    'Lisa',
+    'Zhao',
+    'Mount Elizabeth Hospital',
+    'Oncology',
+    'MD-MEH-2019-078',
+    'active',
+    0,
+    datetime('now', '-95 days'),
+    datetime('now', '-5 days')
+);
+
+-- Raffles Hospital Specialists
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    organization_name, specialty, license_number, status, research_consent, created_at, updated_at
+) VALUES (
+    'hospital_raffles_001',
+    'dr.tan@rafflesmedical.com',
+    'doctor123',
+    'hospital',
+    'Jonathan',
+    'Tan',
+    'Raffles Hospital',
+    'Genetics',
+    'MD-RAF-2021-003',
+    'active',
+    0,
+    datetime('now', '-80 days'),
+    datetime('now', '-1 days')
+);
+
+-- ===================================
+-- RESEARCHERS (researcher role)
+-- ===================================
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    institution, research_area, status, research_consent, created_at, updated_at
+) VALUES (
+    'researcher_002',
+    'j.smith@ntu.edu.sg',
+    'research123',
+    'researcher',
+    'Dr. James',
+    'Smith',
+    'Nanyang Technological University',
+    'Cardiovascular Genetics',
+    'active',
+    0,
+    datetime('now', '-180 days'),
+    datetime('now', '-5 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    institution, research_area, status, research_consent, created_at, updated_at
+) VALUES (
+    'researcher_003',
+    'maria.garcia@astar.edu.sg',
+    'research123',
+    'researcher',
+    'Dr. Maria',
+    'Garcia',
+    'A*STAR Genome Institute',
+    'Cancer Genomics',
+    'active',
+    0,
+    datetime('now', '-150 days'),
+    datetime('now', '-1 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    institution, research_area, status, research_consent, created_at, updated_at
+) VALUES (
+    'researcher_004',
+    'y.tanaka@duke-nus.edu.sg',
+    'research123',
+    'researcher',
+    'Dr. Yuki',
+    'Tanaka',
+    'Duke-NUS Medical School',
+    'Diabetes and Metabolic Disorders',
+    'active',
+    0,
+    datetime('now', '-120 days'),
+    datetime('now', '-2 days')
+);
+
+-- ===================================
+-- ADDITIONAL PATIENTS (patient role)
+-- ===================================
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    date_of_birth, phone, address, status, research_consent, created_at, updated_at
+) VALUES (
+    'patient_005',
+    'sarah.johnson@email.com',
+    'patient123',
+    'patient',
+    'Sarah',
+    'Johnson',
+    '1985-03-15',
+    '+65 8765 4321',
+    '123 Orchard Road, Singapore 238858',
+    'active',
+    1,
+    datetime('now', '-120 days'),
+    datetime('now', '-2 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    date_of_birth, phone, status, research_consent, created_at, updated_at
+) VALUES (
+    'patient_006',
+    'michael.tan@email.com',
+    'patient123',
+    'patient',
+    'Michael',
+    'Tan',
+    '1992-07-22',
+    '+65 9123 4567',
+    'active',
+    1,
+    datetime('now', '-90 days'),
+    datetime('now', '-5 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    date_of_birth, status, research_consent, created_at, updated_at
+) VALUES (
+    'patient_007',
+    'linda.ng@email.com',
+    'patient123',
+    'patient',
+    'Linda',
+    'Ng',
+    '1978-11-08',
+    'active',
+    0,
+    datetime('now', '-75 days'),
+    datetime('now', '-1 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    date_of_birth, phone, status, research_consent, created_at, updated_at
+) VALUES (
+    'patient_008',
+    'david.lim@email.com',
+    'patient123',
+    'patient',
+    'David',
+    'Lim',
+    '1995-05-30',
+    '+65 8234 5678',
+    'active',
+    1,
+    datetime('now', '-60 days'),
+    datetime('now', '-3 days')
+);
+
+-- ===================================
+-- ADDITIONAL CAREGIVERS (caregiver role)
+-- ===================================
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    phone, status, research_consent, created_at, updated_at
+) VALUES (
+    'caregiver_003',
+    'nurse.mary@email.com',
+    'caregiver123',
+    'caregiver',
+    'Mary',
+    'Fernandez',
+    '+65 8111 2222',
+    'active',
+    0,
+    datetime('now', '-85 days'),
+    datetime('now', '-2 days')
+);
+
+INSERT OR IGNORE INTO users (
+    id, email, password, role, first_name, last_name,
+    phone, status, research_consent, created_at, updated_at
+) VALUES (
+    'caregiver_004',
+    'james.parent@email.com',
+    'caregiver123',
+    'caregiver',
+    'James',
+    'Anderson',
+    '+65 9222 3333',
+    'active',
+    0,
+    datetime('now', '-70 days'),
+    datetime('now', '-5 days')
+);
+
+-- ===================================
+-- ADDITIONAL CAREGIVER ACCESS
+-- ===================================
+
+INSERT OR IGNORE INTO caregiver_access (
+    id, patient_id, caregiver_id, relationship, status,
+    created_at, updated_at, accepted_at
+) VALUES (
+    'access_004',
+    'patient_005',
+    'caregiver_003',
+    'spouse',
+    'active',
+    datetime('now', '-30 days'),
+    datetime('now', '-29 days'),
+    datetime('now', '-29 days')
+);
+
+INSERT OR IGNORE INTO caregiver_access (
+    id, patient_id, caregiver_id, relationship, status,
+    created_at, updated_at
+) VALUES (
+    'access_005',
+    'patient_006',
+    'caregiver_004',
+    'parent',
+    'pending',
+    datetime('now', '-5 days'),
+    datetime('now', '-5 days')
+);
+
+-- ===================================
+-- ADDITIONAL DISEASES (CORRECTED SCHEMA)
+-- Note: Using hospital_test_1 ID since we need actual hospital user IDs
+-- ===================================
+
+-- Disease 8: Hypertrophic Cardiomyopathy
+INSERT OR IGNORE INTO diseases (
+    id, hospital_id, disease_name, disease_code, description, constant,
+    created_at, updated_at
+) VALUES (
+    'disease_extra_001',
+    'hospital_test_2',
+    'Hypertrophic Cardiomyopathy',
+    'HCM-2024',
+    'Cardiovascular - Genetic heart muscle disorder',
+    50.0,
+    datetime('now', '-150 days'),
+    datetime('now', '-10 days')
+);
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_myh7_extra', 'disease_extra_001', 'MYH7', 
+        'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2', datetime('now', '-150 days'), datetime('now', '-10 days'));
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_mybpc3_extra', 'disease_extra_001', 'MYBPC3', 
+        'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3', datetime('now', '-150 days'), datetime('now', '-10 days'));
+
+-- Disease 9: Hereditary Breast Cancer
+INSERT OR IGNORE INTO diseases (
+    id, hospital_id, disease_name, disease_code, description, constant,
+    created_at, updated_at
+) VALUES (
+    'disease_extra_002',
+    'hospital_test_2',
+    'Hereditary Breast Cancer',
+    'BRCA-2024',
+    'Cancer - Breast cancer with genetic predisposition',
+    50.0,
+    datetime('now', '-145 days'),
+    datetime('now', '-8 days')
+);
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_brca1_extra', 'disease_extra_002', 'BRCA1', 
+        'c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4', datetime('now', '-145 days'), datetime('now', '-8 days'));
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_brca2_extra', 'disease_extra_002', 'BRCA2', 
+        'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5', datetime('now', '-145 days'), datetime('now', '-8 days'));
+
+-- Disease 10: Cystic Fibrosis
+INSERT OR IGNORE INTO diseases (
+    id, hospital_id, disease_name, disease_code, description, constant,
+    created_at, updated_at
+) VALUES (
+    'disease_extra_003',
+    'hospital_test_2',
+    'Cystic Fibrosis',
+    'CF-2024',
+    'Respiratory - Genetic disorder affecting lungs and digestive system',
+    50.0,
+    datetime('now', '-140 days'),
+    datetime('now', '-6 days')
+);
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_cftr_extra', 'disease_extra_003', 'CFTR', 
+        'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6', datetime('now', '-140 days'), datetime('now', '-6 days'));
+
+-- Disease 11: Parkinsons Disease
+INSERT OR IGNORE INTO diseases (
+    id, hospital_id, disease_name, disease_code, description, constant,
+    created_at, updated_at
+) VALUES (
+    'disease_extra_004',
+    'hospital_test_3',
+    'Parkinsons Disease',
+    'PD-2024',
+    'Neurological - Progressive nervous system disorder',
+    50.0,
+    datetime('now', '-135 days'),
+    datetime('now', '-5 days')
+);
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_snca_extra', 'disease_extra_004', 'SNCA', 
+        'f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7', datetime('now', '-135 days'), datetime('now', '-5 days'));
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_lrrk2_extra', 'disease_extra_004', 'LRRK2', 
+        'a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8', datetime('now', '-135 days'), datetime('now', '-5 days'));
+
+-- Disease 12: Alzheimers Disease
+INSERT OR IGNORE INTO diseases (
+    id, hospital_id, disease_name, disease_code, description, constant,
+    created_at, updated_at
+) VALUES (
+    'disease_extra_005',
+    'hospital_test_3',
+    'Alzheimers Disease',
+    'AD-2024',
+    'Neurological - Progressive brain disorder affecting memory',
+    50.0,
+    datetime('now', '-130 days'),
+    datetime('now', '-4 days')
+);
+
+INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, created_at, updated_at)
+VALUES ('gene_apoe_extra', 'disease_extra_005', 'APOE', 
+        'b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9', datetime('now', '-130 days'), datetime('now', '-4 days'));
+
+-- ===================================
+-- SAMPLE RISK ASSESSMENTS FOR NEW PATIENTS
+-- ===================================
+
+INSERT OR IGNORE INTO risk_assessments (
+    id, user_id, disease_id, overall_risk, match_count,
+    created_at
+) VALUES (
+    'risk_p5_001',
+    'patient_005',
+    'disease_diabetes_1',
+    75.0,
+    3,
+    datetime('now', '-28 days')
+);
+
+INSERT OR IGNORE INTO risk_assessments (
+    id, user_id, disease_id, overall_risk, match_count,
+    created_at
+) VALUES (
+    'risk_p6_001',
+    'patient_006',
+    'disease_extra_002',
+    50.0,
+    1,
+    datetime('now', '-22 days')
+);
+
+INSERT OR IGNORE INTO risk_assessments (
+    id, user_id, disease_id, overall_risk, match_count,
+    created_at
+) VALUES (
+    'risk_p7_001',
+    'patient_007',
+    'disease_extra_004',
+    25.0,
+    0,
+    datetime('now', '-18 days')
+);
+
+INSERT OR IGNORE INTO risk_assessments (
+    id, user_id, disease_id, overall_risk, match_count,
+    created_at
+) VALUES (
+    'risk_p8_001',
+    'patient_008',
+    'disease_extra_001',
+    50.0,
+    2,
+    datetime('now', '-15 days')
+);
+
+-- ===================================
+-- END OF EXPANDED SEED DATA
+-- ===================================

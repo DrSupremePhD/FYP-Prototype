@@ -90,15 +90,23 @@
                         id="activeUsers">0</div>
                 </div>
                 <div class="card">
-                    <div class="text-tertiary text-sm">Suspended Users</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--error-color);"
-                        id="suspendedUsers">0</div>
+                    <div class="text-tertiary text-sm">Inactive Users</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--text-secondary);"
+                        id="inactiveUsers">0</div>
                 </div>
                 <div class="card">
                     <div class="text-tertiary text-sm">Pending Approval</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: var(--warning-color);"
                         id="pendingUsers">0</div>
                 </div>
+            </div>
+
+            <!-- Filter Options -->
+            <div style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-md);">
+                <label class="form-checkbox" style="display: flex; align-items: center; margin: 0;">
+                    <input type="checkbox" id="showDeletedUsers">
+                    <span style="margin-left: var(--space-sm);">Show deleted users</span>
+                </label>
             </div>
 
             <!-- Users Table -->
@@ -133,8 +141,17 @@
         async function loadUsers() {
             UI.showLoading('Loading users...');
             try {
-                // ✅ FIXED: Now calls the real backend API
-                allUsers = await API.getAllUsers();
+                // Check if "Show deleted users" checkbox is checked
+                const includeDeleted = document.getElementById('showDeletedUsers').checked;
+                
+                // Build filters object
+                const filters = {};
+                if (includeDeleted) {
+                    filters.includeDeleted = true;
+                }
+                
+                // Call backend API with filters
+                allUsers = await API.getAllUsers(filters);
                 console.log('Loaded users:', allUsers); // Debug log
                 displayUsers(allUsers);
                 updateStats(allUsers);
@@ -149,7 +166,7 @@
         function updateStats(users) {
             document.getElementById('totalUsers').textContent = users.length;
             document.getElementById('activeUsers').textContent = users.filter(u => u.status === 'active' || !u.status).length;
-            document.getElementById('suspendedUsers').textContent = users.filter(u => u.status === 'suspended').length;
+            document.getElementById('inactiveUsers').textContent = users.filter(u => u.status === 'inactive' || u.status === 'suspended').length;
             document.getElementById('pendingUsers').textContent = users.filter(u => u.status === 'pending_approval').length;
         }
 
@@ -186,23 +203,30 @@
                                     <td>${u.email}</td>
                                     <td><span class="badge badge-info">${Navigation.formatRole(u.role)}</span></td>
                                     <td>
-                                        ${u.status === 'suspended'
-                    ? '<span class="badge badge-error">Suspended</span>'
-                    : u.status === 'pending_approval'
-                        ? '<span class="badge badge-warning">Pending</span>'
-                        : '<span class="badge badge-success">Active</span>'}
+                                        ${u.status === 'deleted'
+                    ? '<span class="badge" style="background: var(--text-tertiary); color: white;">Deleted</span>'
+                    : u.status === 'suspended'
+                        ? '<span class="badge badge-error">Suspended</span>'
+                        : u.status === 'pending_approval'
+                            ? '<span class="badge badge-warning">Pending</span>'
+                            : u.status === 'inactive'
+                                ? '<span class="badge" style="background: var(--text-secondary); color: white;">Inactive</span>'
+                                : '<span class="badge badge-success">Active</span>'}
+                                    </td>
                                     </td>
                                     <td class="text-secondary text-sm">${UI.formatDate(u.created_at || u.createdAt)}</td>
                                     <td>
-                                        ${u.status === 'pending_approval'
-                    ? `
-                                            <button class="btn btn-sm btn-success" onclick="approveUser('${u.id}', '${u.email}')">Approve</button>
-                                            <button class="btn btn-sm btn-error" onclick="rejectUser('${u.id}', '${u.email}')" style="margin-left: var(--space-xs);">Reject</button>
-                                        `
-                    : u.status === 'suspended'
-                        ? `<button class="btn btn-sm btn-outline" onclick="activateUser('${u.id}')">Activate</button>`
-                        : `<button class="btn btn-sm btn-outline" onclick="suspendUser('${u.id}', '${u.email}')">Suspend</button>`}
-                                        <button class="btn btn-sm btn-error" style="background: var(--error-color); color: white;" onclick="deleteUser('${u.id}', '${u.email}')" style="margin-left: var(--space-xs);">Delete</button>
+                                        ${u.status === 'deleted'
+                    ? `<button class="btn btn-sm btn-outline" onclick="restoreUser('${u.id}', '${u.email}')">Restore</button>
+                       <button class="btn btn-sm btn-error" style="background: var(--error-color); color: white; margin-left: var(--space-xs);" onclick="permanentlyDeleteUser('${u.id}', '${u.email}')">Permanently Delete</button>`
+                    : u.status === 'pending_approval'
+                        ? `<button class="btn btn-sm btn-success" onclick="approveUser('${u.id}', '${u.email}')">Approve</button>
+                           <button class="btn btn-sm btn-error" onclick="rejectUser('${u.id}', '${u.email}')" style="margin-left: var(--space-xs);">Reject</button>`
+                        : u.status === 'suspended' || u.status === 'inactive'
+                            ? `<button class="btn btn-sm btn-outline" onclick="activateUser('${u.id}')">Activate</button>
+                               <button class="btn btn-sm btn-error" style="background: var(--error-color); color: white; margin-left: var(--space-xs);" onclick="deleteUser('${u.id}', '${u.email}')">Delete</button>`
+                            : `<button class="btn btn-sm btn-outline" onclick="suspendUser('${u.id}', '${u.email}')">Suspend</button>
+                               <button class="btn btn-sm btn-error" style="background: var(--error-color); color: white; margin-left: var(--space-xs);" onclick="deleteUser('${u.id}', '${u.email}')">Delete</button>`}
                                     </td>
                                 </tr>
                             `).join('')}
@@ -315,12 +339,69 @@
             }
         }
 
+        async function restoreUser(userId, email) {
+            const confirmed = await UI.confirm(
+                `Restore ${email}? They will be reactivated with "active" status.`,
+                'Restore User'
+            );
+
+            if (!confirmed) return;
+
+            UI.showLoading('Restoring user...');
+            try {
+                await API.updateUserStatus(userId, 'active');
+                UI.showAlert('User restored successfully', 'success');
+                await loadUsers();
+            } catch (error) {
+                console.error('Error restoring user:', error);
+                UI.showAlert('Failed to restore user: ' + error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        }
+
+        async function permanentlyDeleteUser(userId, email) {
+            const confirmed = await UI.confirm(
+                `⚠️ PERMANENTLY delete ${email} from the database? This CANNOT be undone and will remove ALL data.`,
+                'Permanent Delete'
+            );
+
+            if (!confirmed) return;
+
+            const doubleConfirm = await UI.confirm(
+                'Final confirmation: This will permanently remove all user data forever. Continue?',
+                'Final Warning'
+            );
+
+            if (!doubleConfirm) return;
+
+            UI.showLoading('Permanently deleting...');
+            try {
+                // Call hard delete endpoint
+                await API.hardDeleteUser(userId);
+                UI.showAlert('User permanently deleted', 'success');
+                await loadUsers();
+            } catch (error) {
+                console.error('Error permanently deleting user:', error);
+                UI.showAlert('Failed to permanently delete: ' + error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        }
+
         // Make functions globally available
         window.suspendUser = suspendUser;
         window.activateUser = activateUser;
         window.deleteUser = deleteUser;
         window.approveUser = approveUser;
         window.rejectUser = rejectUser;
+        window.restoreUser = restoreUser;
+        window.permanentlyDeleteUser = permanentlyDeleteUser;
+
+        // Toggle showing deleted users
+        document.getElementById('showDeletedUsers').addEventListener('change', (e) => {
+            loadUsers();
+        });
 
         // Search functionality - FIXED for full name search
         const searchInput = document.getElementById('searchUsers');

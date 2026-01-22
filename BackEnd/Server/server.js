@@ -372,12 +372,62 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// Permanently delete user (hard delete) - Admin only, for GDPR compliance
+app.delete('/api/users/:id/permanent', requireRole(['system_admin']), async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  try {
+    // Get user info before deleting for logging
+    const userToDelete = await userService.getUserById(req.params.id);
+    
+    if (!userToDelete) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // Permanently delete from database
+    await userService.hardDeleteUser(req.params.id);
+
+    // Log permanent deletion
+    await auditService.createLog({
+      userEmail: userToDelete.email,
+      userRole: userToDelete.role,
+      action: 'user_permanently_deleted',
+      resourceType: 'user',
+      resourceId: req.params.id,
+      status: 'success',
+      severity: 'critical',
+      ipAddress,
+      userAgent,
+      details: { 
+        message: 'User permanently removed from database',
+        deletedEmail: userToDelete.email,
+        deletedRole: userToDelete.role
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'User permanently deleted'
+    });
+  } catch (err) {
+    console.error('Permanent delete user error:', err);
+    return res.status(500).json({
+      error: 'Failed to permanently delete user',
+      message: err.message
+    });
+  }
+});
+
 // List all users (with optional filters)
 app.get('/api/users', async (req, res) => {
   try {
     const filters = {};
     if (req.query.role) filters.role = req.query.role;
     if (req.query.status) filters.status = req.query.status;
+    if (req.query.includeDeleted === 'true') filters.includeDeleted = true;
 
     const users = await userService.getUsers(filters);
 

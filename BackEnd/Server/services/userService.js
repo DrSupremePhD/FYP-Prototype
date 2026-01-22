@@ -71,7 +71,7 @@ async function getUserById(id) {
     return user;
 }
 
-// Check if email already exists
+// Check if email already exists (including deleted users to prevent re-registration)
 async function emailExists(email) {
     const sql = 'SELECT id FROM users WHERE email = ?';
     const user = await get(sql, [email]);
@@ -138,8 +138,31 @@ async function updateUser(id, updates) {
     return await getUserById(id);
 }
 
-// Delete user
-async function deleteUser(id) {
+// Soft delete user - marks as deleted but keeps record
+async function deleteUser(id, reason = 'Account deleted by user request') {
+    const now = new Date().toISOString();
+    
+    // Get user before soft delete to return their info
+    const user = await getUserById(id);
+    if (!user) {
+        throw new Error('User not found');
+    }
+    
+    const sql = `
+        UPDATE users 
+        SET status = 'deleted',
+            deleted_at = ?,
+            deletion_reason = ?,
+            updated_at = ?
+        WHERE id = ?
+    `;
+    
+    await run(sql, [now, reason, now, id]);
+    return true;
+}
+
+// Hard delete user - permanently removes from database (admin only, for GDPR compliance)
+async function hardDeleteUser(id) {
     const sql = 'DELETE FROM users WHERE id = ?';
     await run(sql, [id]);
     return true;
@@ -149,6 +172,12 @@ async function deleteUser(id) {
 async function getUsers(filters = {}) {
     let sql = 'SELECT * FROM users WHERE 1=1';
     const params = [];
+
+    // Exclude deleted users by default unless explicitly requested
+    if (filters.includeDeleted !== true) {
+        sql += ' AND status != ?';
+        params.push('deleted');
+    }
 
     if (filters.role) {
         sql += ' AND role = ?';
@@ -166,6 +195,8 @@ async function getUsers(filters = {}) {
         params.push(filters.researchConsent ? 1 : 0);
     }
 
+    sql += ' ORDER BY created_at DESC';
+
     const users = await all(sql, params);
     
     // Convert research_consent from integer to boolean for all users
@@ -175,10 +206,15 @@ async function getUsers(filters = {}) {
     }));
 }
 
-// NEW: Get users who have consented to research data sharing
+// NEW: Get users who have consented to research data sharing (exclude deleted)
 async function getConsentedUsers() {
-    const sql = 'SELECT * FROM users WHERE research_consent = 1 AND role = ?';
-    const users = await all(sql, ['patient']);
+    const sql = `
+        SELECT * FROM users 
+        WHERE research_consent = 1 
+        AND role = ? 
+        AND status != ?
+    `;
+    const users = await all(sql, ['patient', 'deleted']);
     
     return users.map(user => ({
         ...user,
@@ -207,18 +243,34 @@ async function updateResearchConsent(id, consent) {
     return await getUserById(id);
 }
 
+// NEW: Restore a soft-deleted user (admin only)
+async function restoreUser(id) {
+    const sql = `
+        UPDATE users 
+        SET status = 'active',
+            deleted_at = NULL,
+            deletion_reason = NULL,
+            updated_at = ?
+        WHERE id = ? AND status = 'deleted'
+    `;
+    await run(sql, [new Date().toISOString(), id]);
+    return await getUserById(id);
+}
+
 module.exports = {
     createUser,
     getUserByEmail,
     getUserById,
-    emailExists,                           // NEW export
-    licenseNumberExists,                   // NEW export
-    getHospitalSpecialistsByOrganization,  // NEW export
+    emailExists,
+    licenseNumberExists,
+    getHospitalSpecialistsByOrganization,
     updateUser,
-    deleteUser,
+    deleteUser,              // Now uses soft delete
+    hardDeleteUser,          // NEW: For permanent deletion (GDPR)
     getUsers,
     getConsentedUsers,
     changePassword,
     updateUserStatus,
-    updateResearchConsent
+    updateResearchConsent,
+    restoreUser              // NEW: Restore deleted users
 };

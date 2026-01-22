@@ -123,6 +123,7 @@ const BackendAPI = {
 
             if (filters.role) params.append('role', filters.role);
             if (filters.status) params.append('status', filters.status);
+            if (filters.includeDeleted) params.append('includeDeleted', 'true');
 
             if (params.toString()) {
                 url += '?' + params.toString();
@@ -292,6 +293,37 @@ const BackendAPI = {
             return true;
         } catch (error) {
             console.error('Error deleting user:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Permanently delete a user from database (GDPR compliance)
+     * @param {string} userId - User ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async hardDeleteUser(userId) {
+        if (!this.config.enabled) {
+            Storage.deleteUser(userId);
+            return true;
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}/permanent`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to permanently delete user');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error permanently deleting user:', error);
             throw error;
         }
     },
