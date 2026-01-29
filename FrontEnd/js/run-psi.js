@@ -109,7 +109,9 @@ async function runPSI(selectedDiseaseID) {
     // Send blinded data to backend
     console.log("Sending blinded data to backend...");
     
-    const response = await fetch("http://localhost:3001/api/backend_psi", {
+    const backendURL = (typeof Config !== 'undefined' && Config.backend) ? Config.backend.baseURL : 'http://localhost:3001';
+    
+    const response = await fetch(`${backendURL}/api/backend_psi`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -181,7 +183,9 @@ async function computePSIRiskPercentage(diseaseId, matchedList, doubleBlindedDis
         console.log("  - Matched count:", matchedList.length);
         console.log("  - Total disease genes:", doubleBlindedDiseaseList.length);
 
-        const response = await fetch("http://localhost:3001/api/psi/calculate-risk", {
+        const backendURL = (typeof Config !== 'undefined' && Config.backend) ? Config.backend.baseURL : 'http://localhost:3001';
+
+        const response = await fetch(`${backendURL}/api/psi/calculate-risk`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

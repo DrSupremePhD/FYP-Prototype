@@ -3,11 +3,27 @@
 // Centralized configuration for the application
 // ===================================
 
+// Detect environment and set API URL accordingly
+const getBackendURL = () => {
+    // If running locally (file:// or localhost), use localhost
+    if (window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1' ||
+        window.location.protocol === 'file:') {
+        return 'http://localhost:3001';
+    }
+    
+    // =====================================================
+    // DEPLOYMENT: Replace with your actual backend URL
+    // Example: 'https://privagene-backend.onrender.com'
+    // =====================================================
+    return 'https://YOUR-BACKEND-URL.onrender.com';
+};
+
 const Config = {
     // Backend API settings
     backend: {
         enabled: true, // Set to false to use only localStorage (offline mode)
-        baseURL: 'http://localhost:3001',
+        baseURL: getBackendURL(),
         timeout: 30000 // 30 seconds
     },
 
@@ -48,7 +64,7 @@ const Config = {
     app: {
         name: 'PrivaGene',
         version: '1.0.0',
-        environment: 'development'
+        environment: window.location.hostname === 'localhost' ? 'development' : 'production'
     }
 };
 

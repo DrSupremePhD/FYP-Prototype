@@ -6,7 +6,7 @@
 const BackendAPI = {
     // Configuration
     config: {
-        baseURL: 'http://localhost:3001',
+        baseURL: (typeof Config !== 'undefined' && Config.backend) ? Config.backend.baseURL : 'http://localhost:3001',
         enabled: true // Set to false to use mock API only
     },
 

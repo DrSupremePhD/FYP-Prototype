@@ -4,8 +4,10 @@
 // ===================================
 
 const SecurityAuth = {
-    // API endpoint for security login
-    API_BASE: 'http://localhost:3001',
+    // API endpoint for security login - use Config if available
+    get API_BASE() {
+        return (typeof Config !== 'undefined' && Config.backend) ? Config.backend.baseURL : 'http://localhost:3001';
+    },
 
     // Check if user is authenticated as security admin
     isSecurityAuthenticated() {
@@ -134,4 +136,3 @@ const SecurityAuth = {
     emailInput.addEventListener('input', hideError);
     passwordInput.addEventListener('input', hideError);
 })();
-
