@@ -12,11 +12,8 @@ const getBackendURL = () => {
         return 'http://localhost:3001';
     }
     
-    // =====================================================
-    // DEPLOYMENT: Replace with your actual backend URL
-    // Example: 'https://privagene-backend.onrender.com'
-    // =====================================================
-    return 'https://YOUR-BACKEND-URL.onrender.com';
+    // Production backend URL
+    return 'https://fyp-prototype.onrender.com';
 };
 
 const Config = {
