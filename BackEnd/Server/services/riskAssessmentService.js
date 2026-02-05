@@ -1,4 +1,6 @@
 // riskAssessmentService.js
+const encryptionService = require('./encryptionService');
+
 const { run, get, all } = require('../../DBMS/db/db');
 
 const riskAssessmentService = {
@@ -9,10 +11,14 @@ const riskAssessmentService = {
    */
   async createAssessment(assessmentData) {
     const { userId, overallRisk, diseaseId, matchCount, matchedGenes, riskPercentage } = assessmentData;
-    
+
     const id = 'risk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const createdAt = new Date().toISOString();
-    
+
+    const encryptedOverallRisk = encryptionService.encryptNumber(overallRisk);
+    const encryptedMatchedGenes = encryptionService.encryptJSON(matchedGenes || []);
+    const encryptedRiskPercentage = encryptionService.encryptNumber(riskPercentage);
+
     await run(`
       INSERT INTO risk_assessments (
         id, user_id, overall_risk, disease_id, match_count, 
@@ -22,14 +28,14 @@ const riskAssessmentService = {
     `, [
       id,
       userId,
-      overallRisk,
+      encryptedOverallRisk,
       diseaseId || null,
       matchCount || 0,
-      JSON.stringify(matchedGenes || []),
-      riskPercentage || overallRisk,
+      encryptedMatchedGenes,
+      encryptedRiskPercentage,
       createdAt
     ]);
-    
+
     return {
       id,
       userId,
@@ -62,11 +68,13 @@ const riskAssessmentService = {
       WHERE user_id = ?
       ORDER BY created_at DESC
     `, [userId]);
-    
+
     // Parse matched_genes JSON string back to array
     return assessments.map(a => ({
       ...a,
-      matchedGenes: JSON.parse(a.matchedGenes || '[]')
+      overallRisk: encryptionService.decryptNumber(a.overallRisk),
+      matchedGenes: encryptionService.decryptJSON(a.matchedGenes),
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage)
     }));
   },
 
@@ -90,7 +98,7 @@ const riskAssessmentService = {
       WHERE user_id = ?
       ORDER BY created_at DESC
     `, [userId]);
-    
+
     // Return assessments WITHOUT matched_genes field
     // Caregivers can see the count (matchCount) but not the actual gene names
     return assessments.map(a => ({
@@ -124,12 +132,14 @@ const riskAssessmentService = {
       FROM risk_assessments
       WHERE id = ?
     `, [assessmentId]);
-    
+
     if (!assessment) return null;
-    
+
     return {
       ...assessment,
-      matchedGenes: JSON.parse(assessment.matchedGenes || '[]')
+      overallRisk: encryptionService.decryptNumber(assessment.overallRisk),
+      matchedGenes: encryptionService.decryptJSON(assessment.matchedGenes),
+      riskPercentage: encryptionService.decryptNumber(assessment.riskPercentage)
     };
   },
 
@@ -164,12 +174,14 @@ const riskAssessmentService = {
       ORDER BY created_at DESC
       LIMIT 1
     `, [userId]);
-    
+
     if (!assessment) return null;
-    
+
     return {
       ...assessment,
-      matchedGenes: JSON.parse(assessment.matchedGenes || '[]')
+      overallRisk: encryptionService.decryptNumber(assessment.overallRisk),
+      matchedGenes: encryptionService.decryptJSON(assessment.matchedGenes),
+      riskPercentage: encryptionService.decryptNumber(assessment.riskPercentage)
     };
   },
 
@@ -204,7 +216,7 @@ const riskAssessmentService = {
       WHERE u.research_consent = 1
       ORDER BY ra.created_at DESC
     `);
-    
+
     // Return anonymized data
     // Note: visitorId is an opaque identifier, not linked to personal data
     // We don't expose email, name, phone, or address
@@ -250,7 +262,7 @@ const riskAssessmentService = {
                d.hospital_id, u.organization_name, u.first_name, u.last_name
       ORDER BY assessmentCount DESC, d.disease_name ASC
     `);
-    
+
     return stats.map(s => ({
       ...s,
       hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
@@ -303,11 +315,11 @@ const riskAssessmentService = {
     // Calculate statistics
     const totalAssessments = assessments.length;
     const riskPercentages = assessments.map(a => a.riskPercentage).filter(r => r !== null);
-    
-    const avgRisk = riskPercentages.length > 0 
+
+    const avgRisk = riskPercentages.length > 0
       ? Math.round((riskPercentages.reduce((sum, r) => sum + r, 0) / riskPercentages.length) * 10) / 10
       : null;
-    
+
     const highRiskCount = riskPercentages.filter(r => r >= 70).length;
     const mediumRiskCount = riskPercentages.filter(r => r >= 40 && r < 70).length;
     const lowRiskCount = riskPercentages.filter(r => r < 40).length;
@@ -369,7 +381,7 @@ const riskAssessmentService = {
    */
   async searchDiseaseStatistics(searchTerm) {
     const term = `%${searchTerm}%`;
-    
+
     const stats = await all(`
       SELECT 
         d.id as diseaseId,
@@ -395,7 +407,7 @@ const riskAssessmentService = {
                d.hospital_id, u.organization_name, u.first_name, u.last_name
       ORDER BY assessmentCount DESC, d.disease_name ASC
     `, [term, term, term, term]);
-    
+
     return stats.map(s => ({
       ...s,
       hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
@@ -439,8 +451,8 @@ const riskAssessmentService = {
       dateOfBirth: a.dateOfBirth,
       diseaseName: a.diseaseName || 'Unknown Disease',
       diseaseCode: a.diseaseCode,
-      hospitalName: a.hospitalName || 
-        `${a.hospitalFirstName || ''} ${a.hospitalLastName || ''}`.trim() || 
+      hospitalName: a.hospitalName ||
+        `${a.hospitalFirstName || ''} ${a.hospitalLastName || ''}`.trim() ||
         'Unknown Hospital'
     }));
   },
@@ -488,8 +500,8 @@ const riskAssessmentService = {
       dateOfBirth: a.dateOfBirth, // For age grouping only
       diseaseName: a.diseaseName || 'Unknown Disease',
       diseaseCode: a.diseaseCode,
-      hospitalName: a.hospitalName || 
-        `${a.hospitalFirstName || ''} ${a.hospitalLastName || ''}`.trim() || 
+      hospitalName: a.hospitalName ||
+        `${a.hospitalFirstName || ''} ${a.hospitalLastName || ''}`.trim() ||
         'Unknown Hospital'
     }));
   },
@@ -524,7 +536,7 @@ const riskAssessmentService = {
                d.hospital_id, u.organization_name, u.first_name, u.last_name
       ORDER BY assessmentCount DESC, d.disease_name ASC
     `);
-    
+
     return stats.map(s => ({
       diseaseId: s.diseaseId,
       diseaseName: s.diseaseName,
@@ -648,8 +660,8 @@ const riskAssessmentService = {
       lowRiskPercentage: Math.round((basicStats.lowRiskCount / total) * 1000) / 10,
       uniquePatients: patientCount.uniquePatients || 0,
       diseaseCategoriesAnalyzed: diseaseCount.diseaseCount || 0,
-      avgAssessmentsPerDisease: diseaseCount.diseaseCount > 0 
-        ? Math.round((basicStats.totalAssessments / diseaseCount.diseaseCount) * 10) / 10 
+      avgAssessmentsPerDisease: diseaseCount.diseaseCount > 0
+        ? Math.round((basicStats.totalAssessments / diseaseCount.diseaseCount) * 10) / 10
         : 0
     };
   }
