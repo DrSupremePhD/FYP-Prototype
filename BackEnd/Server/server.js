@@ -8,6 +8,8 @@ const userService = require('./services/userService');
 const { requireRole } = require('../DBMS/middleware/auth');
 const corsMiddleware = require('../DBMS/middleware/cors');
 
+const auditService = require('./services/auditService');
+
 // For disease category
 const psiService = require('./services/psiService');
 const diseaseService = require('./services/diseaseService');
@@ -155,7 +157,6 @@ app.post('/api/users/register', async (req, res) => {
   }
 });
 
-// Login user
 app.post('/api/users/login', async (req, res) => {
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
@@ -170,10 +171,12 @@ app.post('/api/users/login', async (req, res) => {
       });
     }
 
-    const user = await userService.getUserByEmail(email);
-
-    if (!user) {
-      // Log failed login - user not found
+    // 🔒 SECURE: Use authenticateUser instead of manual password comparison
+    let user;
+    try {
+      user = await userService.authenticateUser(email, password);
+    } catch (authError) {
+      // Handle specific authentication errors (deleted/suspended accounts)
       await auditService.createLog({
         userEmail: email,
         action: 'login',
@@ -181,27 +184,25 @@ app.post('/api/users/login', async (req, res) => {
         severity: 'warning',
         ipAddress,
         userAgent,
-        details: { reason: 'User not found' }
+        details: { reason: authError.message }
       });
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password incorrect'
+      return res.status(403).json({
+        error: 'Authentication failed',
+        message: authError.message
       });
     }
 
-    // Simple password comparison (NOTE: In production, use bcrypt!)
-    if (user.password !== password) {
-      // Log failed login - wrong password
+    if (!user) {
+      // Either user doesn't exist OR password is wrong
+      // Log failed login (don't reveal which one for security)
       await auditService.createLog({
-        userId: user.id,
         userEmail: email,
-        userRole: user.role,
         action: 'login',
         status: 'failure',
         severity: 'warning',
         ipAddress,
         userAgent,
-        details: { reason: 'Invalid password' }
+        details: { reason: 'Invalid credentials' }
       });
       return res.status(401).json({
         error: 'Invalid credentials',
@@ -211,7 +212,6 @@ app.post('/api/users/login', async (req, res) => {
 
     // Check if user is approved
     if (user.status === 'pending_approval') {
-      // Log failed login - pending approval
       await auditService.createLog({
         userId: user.id,
         userEmail: email,
@@ -230,7 +230,6 @@ app.post('/api/users/login', async (req, res) => {
     }
 
     if (user.status !== 'active') {
-      // Log failed login - account inactive
       await auditService.createLog({
         userId: user.id,
         userEmail: email,
@@ -261,11 +260,10 @@ app.post('/api/users/login', async (req, res) => {
       details: { message: 'User logged in successfully' }
     });
 
-    // Return user data (excluding password)
-    const { password: _, ...userData } = user;
+    // Return user data (password_hash already excluded by authenticateUser)
     return res.json({
       success: true,
-      user: userData,
+      user: user,
       message: 'Login successful'
     });
   } catch (err) {
@@ -2741,9 +2739,6 @@ app.post('/api/diseases/hash-preview', (req, res) => {
   }
 });
 
-
-
-
 // Helper function to parse CSV line (handles quoted values)
 function parseCSVLine(line) {
   const result = [];
@@ -2771,8 +2766,6 @@ function parseCSVLine(line) {
 // ===================================
 // AUDIT LOG ENDPOINTS
 // ===================================
-
-const auditService = require('./services/auditService');
 
 // Get audit logs with filters (system_admin only)
 app.get('/api/audit-logs', requireRole(['admin']), async (req, res) => {
@@ -2957,10 +2950,10 @@ app.post('/api/security/login', async (req, res) => {
       });
     }
 
-    const user = await userService.getUserByEmail(email);
+    // First check if user exists and has correct role
+    const existingUser = await userService.getUserByEmail(email);
 
-    if (!user) {
-      // Log failed security login attempt - user not found
+    if (!existingUser) {
       await auditService.createLog({
         userEmail: email,
         action: 'security_login',
@@ -2977,12 +2970,11 @@ app.post('/api/security/login', async (req, res) => {
     }
 
     // IMPORTANT: Only allow security_admin role to login through this endpoint
-    if (user.role !== 'security_admin') {
-      // Log unauthorized access attempt
+    if (existingUser.role !== 'security_admin') {
       await auditService.createLog({
-        userId: user.id,
+        userId: existingUser.id,
         userEmail: email,
-        userRole: user.role,
+        userRole: existingUser.role,
         action: 'security_login',
         status: 'failure',
         severity: 'critical',
@@ -2990,7 +2982,7 @@ app.post('/api/security/login', async (req, res) => {
         userAgent,
         details: { 
           reason: 'Unauthorized role attempted security login', 
-          attemptedRole: user.role,
+          attemptedRole: existingUser.role,
           portal: 'security'
         }
       });
@@ -3000,13 +2992,33 @@ app.post('/api/security/login', async (req, res) => {
       });
     }
 
-    // Simple password comparison (NOTE: In production, use bcrypt!)
-    if (user.password !== password) {
-      // Log failed login - wrong password
+    // SECURE: Now authenticates with bcrypt
+    let user;
+    try {
+      user = await userService.authenticateUser(email, password);
+    } catch (authError) {
       await auditService.createLog({
-        userId: user.id,
+        userId: existingUser.id,
         userEmail: email,
-        userRole: user.role,
+        userRole: existingUser.role,
+        action: 'security_login',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: authError.message, portal: 'security' }
+      });
+      return res.status(403).json({
+        error: 'Authentication failed',
+        message: authError.message
+      });
+    }
+
+    if (!user) {
+      await auditService.createLog({
+        userId: existingUser.id,
+        userEmail: email,
+        userRole: existingUser.role,
         action: 'security_login',
         status: 'failure',
         severity: 'warning',
@@ -3022,7 +3034,6 @@ app.post('/api/security/login', async (req, res) => {
 
     // Check if user is active
     if (user.status !== 'active') {
-      // Log failed login - account not active
       await auditService.createLog({
         userId: user.id,
         userEmail: email,
@@ -3040,18 +3051,6 @@ app.post('/api/security/login', async (req, res) => {
       });
     }
 
-    // Success! Return user data (excluding password)
-    const userData = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      status: user.status,
-      created_at: user.created_at
-    };
-
-    // Log successful security login
     await auditService.createLog({
       userId: user.id,
       userEmail: user.email,
@@ -3066,13 +3065,12 @@ app.post('/api/security/login', async (req, res) => {
 
     return res.json({
       success: true,
-      user: userData,
+      user: user,
       message: 'Security login successful'
     });
 
   } catch (err) {
     console.error('Security login error:', err);
-    // Log error
     await auditService.createLog({
       userEmail: req.body.email,
       action: 'security_login',

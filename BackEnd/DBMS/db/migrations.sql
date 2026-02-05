@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
   first_name TEXT,
   last_name TEXT,
@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_session ON documents(session_id);
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name, 
@@ -71,7 +71,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'sysadmin_default',
     'sysadmin@privagene.com',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'system_admin',
     'System',
     'Administrator',
@@ -85,7 +85,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name, 
@@ -96,7 +96,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'secadmin_default',
     'security@privagene.com',
-    'security123',
+    '$2b$10$tYCHManNeoT5pbN7NwKc3.A1RSsJfFtdW0UOoGKDae7REKSI/Kce6',
     'security_admin',
     'Security',
     'Administrator',
@@ -110,7 +110,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -122,7 +122,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'patient_test_1',
     'patient@test.com',
-    'test123',
+    '$2b$10$HAcdXOtRSARIPl4RH8Ed1.GpN93fuqkIoe00O6oduIMAOT.QogV5u',
     'patient',
     'Test',
     'Patient',
@@ -136,7 +136,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -148,7 +148,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'patient_test_2',
     'john.doe@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'John',
     'Doe',
@@ -162,7 +162,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -174,7 +174,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'patient_test_3',
     'jane.smith@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'Jane',
     'Smith',
@@ -188,7 +188,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -201,7 +201,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'patient_test_4',
     'mike.wong@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'Mike',
     'Wong',
@@ -217,7 +217,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -231,7 +231,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'hospital_test_1',
     'hospital@test.com',
-    'hospital123',
+    '$2b$10$ZMQQBBus/20D3Bvcc8h9D.XIQ4q/6uofwWScS455Jb18XZDKHZohK',
     'hospital',
     'Test',
     'Hospital',
@@ -247,7 +247,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     organization_name,
     status,
@@ -257,7 +257,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'hospital_admin_1',
     'cghadmin@sgh.com.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'hospital_admin',
     'City General Hospital',
     'active',
@@ -270,7 +270,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     organization_name,
     status,
@@ -280,7 +280,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'hospital_admin_2',
     'sghadmin@sgh.com.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'hospital_admin',
     'Singapore General Hospital',
     'active',
@@ -292,7 +292,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -306,7 +306,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'hospital_test_2',
     'dr.chen@sgh.com.sg',
-    'hospital123',
+    '$2b$10$ZMQQBBus/20D3Bvcc8h9D.XIQ4q/6uofwWScS455Jb18XZDKHZohK',
     'hospital',
     'Test',
     'Hospital',
@@ -322,7 +322,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -336,7 +336,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'hospital_test_3',
     'dr.wong@sgh.com.sg',
-    'hospital123',
+    '$2b$10$ZMQQBBus/20D3Bvcc8h9D.XIQ4q/6uofwWScS455Jb18XZDKHZohK',
     'hospital',
     'Bob',
     'Wong',
@@ -353,7 +353,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name, 
@@ -366,7 +366,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'researcher_test_1',
     'researcher@test.com',
-    'researcher123',
+    '$2b$10$4a6yX8/KQGF/gllTtjnfdOO7c3CozwIE/4J.8SxkH1W5AFEGCKb2m',
     'researcher',
     'Test',
     'Researcher',
@@ -927,7 +927,7 @@ CREATE INDEX IF NOT EXISTS idx_caregiver_access_can_run_assessments ON caregiver
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -939,7 +939,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'caregiver_test_1',
     'caregiver@test.com',
-    'test123',
+    '$2b$10$HAcdXOtRSARIPl4RH8Ed1.GpN93fuqkIoe00O6oduIMAOT.QogV5u',
     'caregiver',
     'Mary',
     'Caregiver',
@@ -954,7 +954,7 @@ INSERT OR IGNORE INTO users (
 INSERT OR IGNORE INTO users (
     id, 
     email, 
-    password, 
+    password_hash, 
     role, 
     first_name, 
     last_name,
@@ -966,7 +966,7 @@ INSERT OR IGNORE INTO users (
 ) VALUES (
     'caregiver_test_2',
     'sarah.caregiver@email.com',
-    'caregiver123',
+    '$2b$10$ehqNtZfvaJwaLxBmFGs26uhYqDhOQhii2sYaATeha3xUZsK9C/DIS',
     'caregiver',
     'Sarah',
     'Johnson',
@@ -1055,12 +1055,12 @@ INSERT OR IGNORE INTO caregiver_access (
 
 -- Singapore General Hospital Admin
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, status, research_consent, created_at, updated_at
 ) VALUES (
     'admin_sgh_001',
     'admin@sgh.com.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'admin',
     'Sarah',
     'Tan',
@@ -1073,12 +1073,12 @@ INSERT OR IGNORE INTO users (
 
 -- National University Hospital Admin
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, status, research_consent, created_at, updated_at
 ) VALUES (
     'admin_nuh_001',
     'admin@nuh.edu.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'admin',
     'David',
     'Lim',
@@ -1091,12 +1091,12 @@ INSERT OR IGNORE INTO users (
 
 -- Tan Tock Seng Hospital Admin  
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, status, research_consent, created_at, updated_at
 ) VALUES (
     'admin_ttsh_001',
     'admin@ttsh.com.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'admin',
     'Michelle',
     'Wong',
@@ -1109,12 +1109,12 @@ INSERT OR IGNORE INTO users (
 
 -- Mount Elizabeth Hospital Admin
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, status, research_consent, created_at, updated_at
 ) VALUES (
     'admin_meh_001',
     'admin@mountelizabeth.com.sg',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'admin',
     'Jennifer',
     'Chen',
@@ -1127,12 +1127,12 @@ INSERT OR IGNORE INTO users (
 
 -- Raffles Hospital Admin
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, status, research_consent, created_at, updated_at
 ) VALUES (
     'admin_raffles_001',
     'admin@rafflesmedical.com',
-    'admin123',
+    '$2b$10$nfdXaqhn3Ecuh0GR9Z3dsuCPN88AGhDvHhFmODmJhHYI4.97XnjqO',
     'admin',
     'Robert',
     'Koh',
@@ -1149,12 +1149,12 @@ INSERT OR IGNORE INTO users (
 
 -- SGH Specialists
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_sgh_001',
     'dr.tan@sgh.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Kevin',
     'Tan',
@@ -1168,12 +1168,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_sgh_002',
     'dr.lim@sgh.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Rachel',
     'Lim',
@@ -1187,12 +1187,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_sgh_003',
     'dr.ng@sgh.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Benjamin',
     'Ng',
@@ -1207,12 +1207,12 @@ INSERT OR IGNORE INTO users (
 
 -- NUH Specialists
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_nuh_001',
     'dr.chan@nuh.edu.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Emily',
     'Chan',
@@ -1226,12 +1226,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_nuh_002',
     'dr.wong@nuh.edu.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Marcus',
     'Wong',
@@ -1246,12 +1246,12 @@ INSERT OR IGNORE INTO users (
 
 -- TTSH Specialists
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_ttsh_001',
     'dr.lee@ttsh.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Stephanie',
     'Lee',
@@ -1265,12 +1265,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_ttsh_002',
     'dr.kumar@ttsh.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Rajesh',
     'Kumar',
@@ -1285,12 +1285,12 @@ INSERT OR IGNORE INTO users (
 
 -- Mount Elizabeth Specialists
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_meh_001',
     'dr.zhao@mountelizabeth.com.sg',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Lisa',
     'Zhao',
@@ -1305,12 +1305,12 @@ INSERT OR IGNORE INTO users (
 
 -- Raffles Hospital Specialists
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     organization_name, specialty, license_number, status, research_consent, created_at, updated_at
 ) VALUES (
     'hospital_raffles_001',
     'dr.tan@rafflesmedical.com',
-    'doctor123',
+    '$2b$10$KmxdbP9Z8MckQBsUnxIU/O36fcErCYUTv5GKYxpCLBrxdqZZz2ycC',
     'hospital',
     'Jonathan',
     'Tan',
@@ -1328,12 +1328,12 @@ INSERT OR IGNORE INTO users (
 -- ===================================
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     institution, research_area, status, research_consent, created_at, updated_at
 ) VALUES (
     'researcher_002',
     'j.smith@ntu.edu.sg',
-    'research123',
+    '$2b$10$2Umo8xEv0piFhn8P9lQoIOlVm9KT3ElA4ZwnnRvz4T.Z70B14BTxa',
     'researcher',
     'Dr. James',
     'Smith',
@@ -1346,12 +1346,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     institution, research_area, status, research_consent, created_at, updated_at
 ) VALUES (
     'researcher_003',
     'maria.garcia@astar.edu.sg',
-    'research123',
+    '$2b$10$2Umo8xEv0piFhn8P9lQoIOlVm9KT3ElA4ZwnnRvz4T.Z70B14BTxa',
     'researcher',
     'Dr. Maria',
     'Garcia',
@@ -1364,12 +1364,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     institution, research_area, status, research_consent, created_at, updated_at
 ) VALUES (
     'researcher_004',
     'y.tanaka@duke-nus.edu.sg',
-    'research123',
+    '$2b$10$2Umo8xEv0piFhn8P9lQoIOlVm9KT3ElA4ZwnnRvz4T.Z70B14BTxa',
     'researcher',
     'Dr. Yuki',
     'Tanaka',
@@ -1386,12 +1386,12 @@ INSERT OR IGNORE INTO users (
 -- ===================================
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     date_of_birth, phone, address, status, research_consent, created_at, updated_at
 ) VALUES (
     'patient_005',
     'sarah.johnson@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'Sarah',
     'Johnson',
@@ -1405,12 +1405,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     date_of_birth, phone, status, research_consent, created_at, updated_at
 ) VALUES (
     'patient_006',
     'michael.tan@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'Michael',
     'Tan',
@@ -1423,12 +1423,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     date_of_birth, status, research_consent, created_at, updated_at
 ) VALUES (
     'patient_007',
     'linda.ng@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'Linda',
     'Ng',
@@ -1440,12 +1440,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     date_of_birth, phone, status, research_consent, created_at, updated_at
 ) VALUES (
     'patient_008',
     'david.lim@email.com',
-    'patient123',
+    '$2b$10$fKsGO9lFa4l70xK0/6R5ru6wD5Xl3AZIZPLGS2FpbKRz.KW5L2JG2',
     'patient',
     'David',
     'Lim',
@@ -1462,12 +1462,12 @@ INSERT OR IGNORE INTO users (
 -- ===================================
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     phone, status, research_consent, created_at, updated_at
 ) VALUES (
     'caregiver_003',
     'nurse.mary@email.com',
-    'caregiver123',
+    '$2b$10$ehqNtZfvaJwaLxBmFGs26uhYqDhOQhii2sYaATeha3xUZsK9C/DIS',
     'caregiver',
     'Mary',
     'Fernandez',
@@ -1479,12 +1479,12 @@ INSERT OR IGNORE INTO users (
 );
 
 INSERT OR IGNORE INTO users (
-    id, email, password, role, first_name, last_name,
+    id, email, password_hash, role, first_name, last_name,
     phone, status, research_consent, created_at, updated_at
 ) VALUES (
     'caregiver_004',
     'james.parent@email.com',
-    'caregiver123',
+    '$2b$10$ehqNtZfvaJwaLxBmFGs26uhYqDhOQhii2sYaATeha3xUZsK9C/DIS',
     'caregiver',
     'James',
     'Anderson',

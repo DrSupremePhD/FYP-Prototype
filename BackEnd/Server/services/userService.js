@@ -1,5 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
 const { run, get, all } = require('../../DBMS/db/db');
+const bcrypt = require('bcrypt');
+
+// Number of salt rounds for bcrypt (10 is a good balance of security and performance)
+const SALT_ROUNDS = 10;
 
 /**
  * User Service - handles user registration, authentication, and management
@@ -32,16 +36,19 @@ async function createUser(userData) {
     // Convert boolean to integer for SQLite (0 or 1)
     const researchConsentInt = researchConsent ? 1 : 0;
 
+    // 🔒 SECURITY: Hash the password before storing
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
     const sql = `
     INSERT INTO users (
-      id, email, password, role, first_name, last_name, phone, date_of_birth,
+      id, email, password_hash, role, first_name, last_name, phone, date_of_birth,
       address, organization_name, organization_id, license_number, specialty,
       institution, research_area, research_consent, status, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
     await run(sql, [
-        id, email, password, role, firstName, lastName, phone, dateOfBirth,
+        id, email, passwordHash, role, firstName, lastName, phone, dateOfBirth,
         address, organizationName, organizationId, licenseNumber, specialty,
         institution, researchArea, researchConsentInt, status, now, now
     ]);
@@ -69,6 +76,36 @@ async function getUserById(id) {
         user.research_consent = user.research_consent === 1;
     }
     return user;
+}
+
+// 🔒 NEW: Authenticate user with email and password (for login)
+async function authenticateUser(email, password) {
+    const user = await getUserByEmail(email);
+    
+    if (!user) {
+        return null; // User not found
+    }
+
+    // Check if account is deleted
+    if (user.status === 'deleted') {
+        throw new Error('This account has been deleted');
+    }
+
+    // Check if account is suspended
+    if (user.status === 'suspended') {
+        throw new Error('This account has been suspended. Please contact support.');
+    }
+
+    // 🔒 SECURITY: Compare plaintext password with stored hash
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValid) {
+        return null; // Invalid password
+    }
+
+    // 🔒 SECURITY: Remove password_hash before returning user object
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
 }
 
 // Check if email already exists (including deleted users to prevent re-registration)
@@ -222,10 +259,12 @@ async function getConsentedUsers() {
     }));
 }
 
-// Change password
+// 🔒 UPDATED: Change password (now hashes the new password)
 async function changePassword(id, newPassword) {
-    const sql = 'UPDATE users SET password = ?, updated_at = ? WHERE id = ?';
-    await run(sql, [newPassword, new Date().toISOString(), id]);
+    // Hash the new password before storing
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const sql = 'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?';
+    await run(sql, [passwordHash, new Date().toISOString(), id]);
     return true;
 }
 
@@ -261,6 +300,7 @@ module.exports = {
     createUser,
     getUserByEmail,
     getUserById,
+    authenticateUser,        // 🔒 NEW: For secure login
     emailExists,
     licenseNumberExists,
     getHospitalSpecialistsByOrganization,
