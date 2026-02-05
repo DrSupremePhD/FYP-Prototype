@@ -217,19 +217,19 @@ const riskAssessmentService = {
       ORDER BY ra.created_at DESC
     `);
 
-    // Return anonymized data
+    // Return anonymized data (DECRYPTED for researcher analysis)
     // Note: visitorId is an opaque identifier, not linked to personal data
     // We don't expose email, name, phone, or address
     return assessments.map(a => ({
       id: a.id,
       visitorId: a.visitorId, // Anonymized patient identifier for counting unique patients
-      overallRisk: a.overallRisk,
+      overallRisk: encryptionService.decryptNumber(a.overallRisk),
       diseaseId: a.diseaseId,
       matchCount: a.matchCount,
-      matchedGenes: JSON.parse(a.matchedGenes || '[]'),
-      riskPercentage: a.riskPercentage,
+      matchedGenes: encryptionService.decryptJSON(a.matchedGenes),
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
       createdAt: a.createdAt,
-      dateOfBirth: a.dateOfBirth // For age grouping only - THIS IS THE KEY ADDITION
+      dateOfBirth: a.dateOfBirth // For age grouping only
     }));
   },
 
