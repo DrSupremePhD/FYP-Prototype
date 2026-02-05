@@ -2352,20 +2352,20 @@ app.get('/api/diseases/unique', async (req, res) => {
   }
 });
 
-// Search diseases
+// Search diseases by organization
 app.get('/api/diseases/search', async (req, res) => {
   try {
-    const { hospital_id, q } = req.query;
+    const { organization_name, q } = req.query;
     
-    if (!hospital_id) {
+    if (!organization_name) {
       return res.status(400).json({
-        error: 'Missing hospital_id parameter'
+        error: 'Missing organization_name parameter'
       });
     }
 
     if (!q) {
-      // If no search term, return all diseases
-      const diseases = await diseaseService.getDiseasesByHospital(hospital_id);
+      // If no search term, return all diseases for organization
+      const diseases = await diseaseService.getDiseasesByOrganization(organization_name);
       return res.json({
         success: true,
         count: diseases.length,
@@ -2373,7 +2373,7 @@ app.get('/api/diseases/search', async (req, res) => {
       });
     }
 
-    const diseases = await diseaseService.searchDiseases(hospital_id, q);
+    const diseases = await diseaseService.searchDiseasesByOrganization(organization_name, q);
 
     return res.json({
       success: true,

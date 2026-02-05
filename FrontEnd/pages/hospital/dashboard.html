@@ -73,7 +73,7 @@
                 <!-- Recent Results -->
                 <div class="card">
                     <div class="card-header" id="recentDiseaseUploads">
-                        <h3 class="card-title">Recently Uploaded Disease-Gene Entries</h3>
+                        <h3 class="card-title">Recently Uploaded/Updated Disease-Gene Entries</h3>
                     </div>
                     <div id="recentDiseaseUploadsResults">
                         <!-- Will be populated by JavaScript -->
@@ -190,7 +190,6 @@
                 <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Disease Code</th>
                 <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Description</th>
                 <th style="padding: var(--space-sm); text-align: center; font-weight: 600;">Constant</th>
-                <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Uploaded/Updated By</th>
                 <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Created</th>
                 <th style="padding: var(--space-sm); text-align: left; font-weight: 600;">Updated</th>
               </tr>
@@ -205,10 +204,6 @@
                     <span style="background: var(--primary-light); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-weight: 500;">
                       ${disease.constant}
                     </span>
-                  </td>
-                  <td style="padding: var(--space-sm);">
-                    <div style="font-weight: 500;">${escapeHtml(disease.creatorName)}</div>
-                    <div style="font-size: var(--text-sm); color: var(--text-tertiary);">${escapeHtml(disease.creatorEmail)}</div>
                   </td>
                   <td style="padding: var(--space-sm); font-size: var(--text-sm); color: var(--text-secondary);">${formatDateTime(disease.createdAt)}</td>
                   <td style="padding: var(--space-sm); font-size: var(--text-sm); color: var(--text-secondary);">${formatDateTime(disease.updatedAt)}</td>

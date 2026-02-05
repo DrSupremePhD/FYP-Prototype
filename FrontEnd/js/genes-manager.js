@@ -22,7 +22,8 @@ class GeneManager {
             const backendHealthy = await BackendAPI.checkHealth();
             
             if (backendHealthy) {
-                this.entries = await BackendAPI.getDiseases(this.user.id);
+                // ✅ CHANGED: Fetch by organization instead of user ID
+                this.entries = await BackendAPI.getDiseasesByOrganization(this.user.organization_name);
                 this.useBackend = true;
             } else {
                 // Fallback to localStorage
@@ -36,7 +37,7 @@ class GeneManager {
             this.updateStats();
             this.hideLoading();
             
-            console.log(`Loaded ${this.entries.length} gene entries (backend: ${this.useBackend})`);
+            console.log(`Loaded ${this.entries.length} gene entries for organization: ${this.user.organization_name} (backend: ${this.useBackend})`);
         } catch (error) {
             console.error('Error loading gene entries:', error);
             
@@ -77,17 +78,17 @@ class GeneManager {
         if (totalEl) totalEl.textContent = this.entries.length;
 
         // Count unique diseases
-        const uniqueDiseases = new Set(this.entries.map(e => e.disease_code));
+        const uniqueDiseases = new Set(this.entries.map(e => e.diseaseCode));
         if (diseasesEl) diseasesEl.textContent = uniqueDiseases.size;
 
         // Count unique genes (now handling arrays)
         const uniqueGenes = new Set();
         this.entries.forEach(entry => {
-            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
-                entry.gene_symbols.forEach(symbol => uniqueGenes.add(symbol));
-            } else if (entry.gene_symbol) {
+            if (entry.geneSymbols && Array.isArray(entry.geneSymbols)) {
+                entry.geneSymbols.forEach(symbol => uniqueGenes.add(symbol));
+            } else if (entry.geneSymbol) {
                 // Fallback for old single gene format
-                uniqueGenes.add(entry.gene_symbol);
+                uniqueGenes.add(entry.geneSymbol);
             }
         });
         if (genesEl) genesEl.textContent = uniqueGenes.size;
@@ -112,9 +113,9 @@ class GeneManager {
         try {
             // Parse gene symbols from the input (comma-separated string to array)
             let geneSymbolsArray = [];
-            if (data.gene_symbol) {
+            if (data.geneSymbol) {
                 // Split by comma and clean up each symbol
-                geneSymbolsArray = data.gene_symbol
+                geneSymbolsArray = data.geneSymbol
                     .split(',')
                     .map(s => s.trim().toUpperCase())
                     .filter(s => s); // Remove empty strings
@@ -135,8 +136,8 @@ class GeneManager {
                 // Use backend API  
                 const entryData = {
                     hospital_id: this.user.id,
-                    disease_name: data.disease_name,
-                    disease_code: data.disease_code,
+                    disease_name: data.diseaseName,
+                    disease_code: data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant)
@@ -161,7 +162,7 @@ class GeneManager {
                     entry = result.disease;
                 }
                 // Format 3: Direct entry object with id
-                else if (result.id && result.disease_name) {
+                else if (result.id && result.diseaseName) {
                     entry = result;
                 }
                 // Format 4: { disease: {...} } without success flag
@@ -189,8 +190,8 @@ class GeneManager {
                 const newEntry = {
                     id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                     hospital_id: this.user.id,
-                    disease_name: data.disease_name,
-                    disease_code: data.disease_code,
+                    disease_name: data.diseaseName,
+                    disease_code: data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant),
@@ -240,8 +241,8 @@ class GeneManager {
         try {
             // Parse gene symbols
             let geneSymbolsArray = [];
-            if (data.gene_symbol) {
-                geneSymbolsArray = data.gene_symbol
+            if (data.geneSymbol) {
+                geneSymbolsArray = data.geneSymbol
                     .split(',')
                     .map(s => s.trim().toUpperCase())
                     .filter(s => s);
@@ -255,8 +256,8 @@ class GeneManager {
             if (this.useBackend) {
                 // Use backend API
                 const updateData = {
-                    disease_name: data.disease_name,
-                    disease_code: data.disease_code,
+                    disease_name: data.diseaseName,
+                    disease_code: data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant)
@@ -287,8 +288,8 @@ class GeneManager {
                 
                 const updatedEntry = {
                     ...this.entries[index],
-                    disease_name: data.disease_name,
-                    disease_code: data.disease_code,
+                    disease_name: data.diseaseName,
+                    disease_code: data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant),
@@ -413,8 +414,8 @@ class GeneManager {
                     // Check for duplicates
                     const geneSymbol = entry.gene_symbol.toUpperCase();
                     const exists = this.entries.some(e => 
-                        e.disease_code === entry.disease_code && 
-                        e.gene_symbols && e.gene_symbols.includes(geneSymbol)
+                        e.diseaseCode === entry.disease_code && 
+                        e.geneSymbols && e.geneSymbols.includes(geneSymbol)
                     );
                     
                     if (exists) {
@@ -492,20 +493,20 @@ class GeneManager {
         } else {
             const term = searchTerm.toLowerCase().trim();
             this.filteredEntries = this.entries.filter(entry => {
-                const matchDisease = entry.disease_name.toLowerCase().includes(term) ||
-                                    entry.disease_code.toLowerCase().includes(term);
+                const matchDisease = entry.diseaseName.toLowerCase().includes(term) ||
+                                    entry.diseaseCode.toLowerCase().includes(term);
                 
                 const matchDescription = entry.description && 
                                         entry.description.toLowerCase().includes(term);
                 
                 // Check gene symbols (handle both array and single formats)
                 let matchGene = false;
-                if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
-                    matchGene = entry.gene_symbols.some(symbol => 
+                if (entry.geneSymbols && Array.isArray(entry.geneSymbols)) {
+                    matchGene = entry.geneSymbols.some(symbol => 
                         symbol.toLowerCase().includes(term)
                     );
-                } else if (entry.gene_symbol) {
-                    matchGene = entry.gene_symbol.toLowerCase().includes(term);
+                } else if (entry.geneSymbol) {
+                    matchGene = entry.geneSymbol.toLowerCase().includes(term);
                 }
 
                 // Check constant
@@ -547,13 +548,13 @@ class GeneManager {
         tableBody.innerHTML = this.filteredEntries.map(entry => {
             // Handle both array and single gene formats
             let geneSymbolsDisplay = '';
-            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
-                geneSymbolsDisplay = entry.gene_symbols.map(symbol => 
+            if (entry.geneSymbols && Array.isArray(entry.geneSymbols)) {
+                geneSymbolsDisplay = entry.geneSymbols.map(symbol => 
                     `<span class="gene-tag">${this.escapeHtml(symbol)}</span>`
                 ).join(' ');
-            } else if (entry.gene_symbol) {
+            } else if (entry.geneSymbol) {
                 // Fallback for old format
-                geneSymbolsDisplay = `<span class="gene-tag">${this.escapeHtml(entry.gene_symbol)}</span>`;
+                geneSymbolsDisplay = `<span class="gene-tag">${this.escapeHtml(entry.geneSymbol)}</span>`;
             }
 
             // Format constant display
@@ -563,8 +564,8 @@ class GeneManager {
 
             return `
                 <tr>
-                    <td><strong>${this.escapeHtml(entry.disease_name)}</strong></td>
-                    <td><code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">${this.escapeHtml(entry.disease_code)}</code></td>
+                    <td><strong>${this.escapeHtml(entry.diseaseName)}</strong></td>
+                    <td><code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">${this.escapeHtml(entry.diseaseCode)}</code></td>
                     <td style="max-width: 300px;">
                         <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                             ${geneSymbolsDisplay}
@@ -574,7 +575,7 @@ class GeneManager {
                     <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(entry.description || '')}">
                         ${this.escapeHtml(entry.description) || '<em style="color: var(--text-tertiary);">No description</em>'}
                     </td>
-                    <td style="white-space: nowrap;">${this.formatDate(entry.created_at)}</td>
+                    <td style="white-space: nowrap;">${this.formatDate(entry.createdAt)}</td>
                     <td>
                         <div class="action-buttons">
                             <button onclick="modalManager.openGeneModal('${entry.id}')" 
