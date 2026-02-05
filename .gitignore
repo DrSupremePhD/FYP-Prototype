@@ -4,12 +4,16 @@ node_modules/
 
 # Database files
 *.db
+*.db-journal
+*.db-shm
+*.db-wal
 app.db
 BackEnd/DBMS/app.db
 
 # Environment files
 .env
 .env.local
+**/.env
 
 # IDE files
 .vscode/
