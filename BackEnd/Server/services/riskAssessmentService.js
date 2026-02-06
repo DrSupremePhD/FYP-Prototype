@@ -239,7 +239,8 @@ const riskAssessmentService = {
    * @returns {Promise<Array>} Array of disease stats
    */
   async getDiseaseStatisticsForResearch() {
-    const stats = await all(`
+    // First, get all diseases
+    const diseases = await all(`
       SELECT 
         d.id as diseaseId,
         d.disease_name as diseaseName,
@@ -248,26 +249,53 @@ const riskAssessmentService = {
         d.hospital_id as hospitalId,
         u.organization_name as hospitalName,
         u.first_name as hospitalFirstName,
-        u.last_name as hospitalLastName,
-        COUNT(ra.id) as assessmentCount,
-        AVG(ra.risk_percentage) as avgRiskPercentage,
-        MAX(ra.risk_percentage) as maxRiskPercentage,
-        MIN(ra.risk_percentage) as minRiskPercentage,
-        SUM(CASE WHEN ra.risk_percentage >= 70 THEN 1 ELSE 0 END) as highRiskCount
+        u.last_name as hospitalLastName
       FROM diseases d
       LEFT JOIN users u ON d.hospital_id = u.id
-      LEFT JOIN risk_assessments ra ON d.id = ra.disease_id
-        AND ra.user_id IN (SELECT id FROM users WHERE research_consent = 1)
-      GROUP BY d.id, d.disease_name, d.disease_code, d.description, 
-               d.hospital_id, u.organization_name, u.first_name, u.last_name
-      ORDER BY assessmentCount DESC, d.disease_name ASC
+      ORDER BY d.disease_name ASC
     `);
 
-    return stats.map(s => ({
-      ...s,
-      hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
-      avgRiskPercentage: s.avgRiskPercentage ? Math.round(s.avgRiskPercentage * 10) / 10 : null
+    // For each disease, get assessments and calculate decrypted statistics
+    const stats = await Promise.all(diseases.map(async (disease) => {
+      const assessments = await all(`
+        SELECT ra.risk_percentage
+        FROM risk_assessments ra
+        INNER JOIN users u ON ra.user_id = u.id
+        WHERE ra.disease_id = ?
+          AND u.research_consent = 1
+      `, [disease.diseaseId]);
+
+      // Decrypt risk percentages
+      const decryptedRisks = assessments
+        .map(a => encryptionService.decryptNumber(a.risk_percentage))
+        .filter(r => r !== null && !isNaN(r));
+
+      const assessmentCount = decryptedRisks.length;
+      const avgRiskPercentage = assessmentCount > 0
+        ? Math.round((decryptedRisks.reduce((sum, r) => sum + r, 0) / assessmentCount) * 10) / 10
+        : null;
+      const maxRiskPercentage = assessmentCount > 0 ? Math.max(...decryptedRisks) : null;
+      const minRiskPercentage = assessmentCount > 0 ? Math.min(...decryptedRisks) : null;
+      const highRiskCount = decryptedRisks.filter(r => r >= 70).length;
+
+      return {
+        ...disease,
+        hospitalName: disease.hospitalName || `${disease.hospitalFirstName || ''} ${disease.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
+        assessmentCount,
+        avgRiskPercentage,
+        maxRiskPercentage,
+        minRiskPercentage,
+        highRiskCount
+      };
     }));
+
+    // Sort by assessment count (descending), then by disease name
+    return stats.sort((a, b) => {
+      if (b.assessmentCount !== a.assessmentCount) {
+        return b.assessmentCount - a.assessmentCount;
+      }
+      return a.diseaseName.localeCompare(b.diseaseName);
+    });
   },
 
   /**
@@ -312,9 +340,18 @@ const riskAssessmentService = {
       ORDER BY ra.created_at DESC
     `, [diseaseId]);
 
+    // Decrypt risk percentages before calculating statistics
+    const decryptedAssessments = assessments.map(a => ({
+      ...a,
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
+      matchedGenes: encryptionService.decryptJSON(a.matchedGenes)
+    }));
+
     // Calculate statistics
-    const totalAssessments = assessments.length;
-    const riskPercentages = assessments.map(a => a.riskPercentage).filter(r => r !== null);
+    const totalAssessments = decryptedAssessments.length;
+    const riskPercentages = decryptedAssessments
+      .map(a => a.riskPercentage)
+      .filter(r => r !== null && !isNaN(r));
 
     const avgRisk = riskPercentages.length > 0
       ? Math.round((riskPercentages.reduce((sum, r) => sum + r, 0) / riskPercentages.length) * 10) / 10
@@ -331,20 +368,38 @@ const riskAssessmentService = {
       high: highRiskCount
     };
 
-    // Monthly trend data (last 6 months)
-    const monthlyTrend = await all(`
+    // Monthly trend data (last 6 months) - fetch and decrypt
+    const monthlyData = await all(`
       SELECT 
         strftime('%Y-%m', ra.created_at) as month,
-        COUNT(*) as count,
-        AVG(ra.risk_percentage) as avgRisk
+        ra.risk_percentage
       FROM risk_assessments ra
       INNER JOIN users u ON ra.user_id = u.id
       WHERE ra.disease_id = ?
         AND u.research_consent = 1
         AND ra.created_at >= date('now', '-6 months')
-      GROUP BY strftime('%Y-%m', ra.created_at)
       ORDER BY month ASC
     `, [diseaseId]);
+
+    // Group by month and calculate decrypted averages
+    const monthlyMap = {};
+    monthlyData.forEach(row => {
+      if (!monthlyMap[row.month]) {
+        monthlyMap[row.month] = [];
+      }
+      const decrypted = encryptionService.decryptNumber(row.risk_percentage);
+      if (decrypted !== null && !isNaN(decrypted)) {
+        monthlyMap[row.month].push(decrypted);
+      }
+    });
+
+    const monthlyTrend = Object.keys(monthlyMap).sort().map(month => ({
+      month,
+      count: monthlyMap[month].length,
+      avgRisk: monthlyMap[month].length > 0
+        ? Math.round((monthlyMap[month].reduce((sum, r) => sum + r, 0) / monthlyMap[month].length) * 10) / 10
+        : 0
+    }));
 
     return {
       ...diseaseInfo,
@@ -362,12 +417,12 @@ const riskAssessmentService = {
         count: t.count,
         avgRisk: t.avgRisk ? Math.round(t.avgRisk * 10) / 10 : 0
       })),
-      // Return anonymized assessments (no user IDs)
-      recentAssessments: assessments.slice(0, 20).map(a => ({
+      // Return anonymized assessments (no user IDs) with decrypted data
+      recentAssessments: decryptedAssessments.slice(0, 20).map(a => ({
         id: a.id,
-        riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
+        riskPercentage: a.riskPercentage,
         matchCount: a.matchCount,
-        matchedGenes: JSON.parse(a.matchedGenes || '[]'),
+        matchedGenes: a.matchedGenes || [],
         createdAt: a.createdAt,
         dateOfBirth: a.dateOfBirth
       }))
@@ -380,9 +435,8 @@ const riskAssessmentService = {
    * @returns {Promise<Array>} Matching disease stats
    */
   async searchDiseaseStatistics(searchTerm) {
-    const term = `%${searchTerm}%`;
-
-    const stats = await all(`
+    // First, get all diseases matching the search term
+    const diseases = await all(`
       SELECT 
         d.id as diseaseId,
         d.disease_name as diseaseName,
@@ -391,28 +445,54 @@ const riskAssessmentService = {
         d.hospital_id as hospitalId,
         u.organization_name as hospitalName,
         u.first_name as hospitalFirstName,
-        u.last_name as hospitalLastName,
-        COUNT(ra.id) as assessmentCount,
-        AVG(ra.risk_percentage) as avgRiskPercentage,
-        SUM(CASE WHEN ra.risk_percentage >= 70 THEN 1 ELSE 0 END) as highRiskCount
+        u.last_name as hospitalLastName
       FROM diseases d
       LEFT JOIN users u ON d.hospital_id = u.id
-      LEFT JOIN risk_assessments ra ON d.id = ra.disease_id
-        AND ra.user_id IN (SELECT id FROM users WHERE research_consent = 1)
-      WHERE d.disease_name LIKE ?
-         OR d.disease_code LIKE ?
-         OR u.organization_name LIKE ?
-         OR (u.first_name || ' ' || u.last_name) LIKE ?
-      GROUP BY d.id, d.disease_name, d.disease_code, d.description, 
-               d.hospital_id, u.organization_name, u.first_name, u.last_name
-      ORDER BY assessmentCount DESC, d.disease_name ASC
-    `, [term, term, term, term]);
+      WHERE d.disease_name LIKE ? OR u.organization_name LIKE ?
+      ORDER BY d.disease_name ASC
+    `, [`%${searchTerm}%`, `%${searchTerm}%`]);
 
-    return stats.map(s => ({
-      ...s,
-      hospitalName: s.hospitalName || `${s.hospitalFirstName || ''} ${s.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
-      avgRiskPercentage: s.avgRiskPercentage ? Math.round(s.avgRiskPercentage * 10) / 10 : null
+    // For each disease, get assessments and calculate decrypted statistics
+    const stats = await Promise.all(diseases.map(async (disease) => {
+      const assessments = await all(`
+        SELECT ra.risk_percentage
+        FROM risk_assessments ra
+        INNER JOIN users u ON ra.user_id = u.id
+        WHERE ra.disease_id = ?
+          AND u.research_consent = 1
+      `, [disease.diseaseId]);
+
+      // Decrypt risk percentages
+      const decryptedRisks = assessments
+        .map(a => encryptionService.decryptNumber(a.risk_percentage))
+        .filter(r => r !== null && !isNaN(r));
+
+      const assessmentCount = decryptedRisks.length;
+      const avgRiskPercentage = assessmentCount > 0
+        ? Math.round((decryptedRisks.reduce((sum, r) => sum + r, 0) / assessmentCount) * 10) / 10
+        : null;
+      const maxRiskPercentage = assessmentCount > 0 ? Math.max(...decryptedRisks) : null;
+      const minRiskPercentage = assessmentCount > 0 ? Math.min(...decryptedRisks) : null;
+      const highRiskCount = decryptedRisks.filter(r => r >= 70).length;
+
+      return {
+        ...disease,
+        hospitalName: disease.hospitalName || `${disease.hospitalFirstName || ''} ${disease.hospitalLastName || ''}`.trim() || 'Unknown Hospital',
+        assessmentCount,
+        avgRiskPercentage,
+        maxRiskPercentage,
+        minRiskPercentage,
+        highRiskCount
+      };
     }));
+
+    // Sort by assessment count (descending), then by disease name
+    return stats.sort((a, b) => {
+      if (b.assessmentCount !== a.assessmentCount) {
+        return b.assessmentCount - a.assessmentCount;
+      }
+      return a.diseaseName.localeCompare(b.diseaseName);
+    });
   },
 
   /**

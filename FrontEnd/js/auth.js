@@ -36,6 +36,28 @@ const Auth = {
         return user && user.role === role;
     },
 
+    // Helper function to clear all gene-related data from localStorage
+    clearGeneData() {
+        // Clear standard gene data keys
+        localStorage.removeItem('mappedGeneSymbols');
+        localStorage.removeItem('geneUploads');
+        localStorage.removeItem('psiResult');
+        
+        // Clear all patient-specific gene keys (patient_*_genes)
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('patient_') && key.endsWith('_genes')) {
+                keysToRemove.push(key);
+            }
+        }
+        
+        // Remove all patient gene keys
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        console.log(`Cleared ${keysToRemove.length} patient gene data entries`);
+    },
+
     // Login function
     async login(email, password) {
         try {
@@ -57,10 +79,8 @@ const Auth = {
 
             const user = data.user;
 
-            // Clear gene upload
-            localStorage.removeItem('mappedGeneSymbols');
-            localStorage.removeItem('geneUploads');
-            localStorage.removeItem('psiResult');
+            // Clear all gene data when logging in
+            this.clearGeneData();
 
             // Store user in session
             this.setCurrentUser(user);
@@ -119,10 +139,8 @@ const Auth = {
 
     // Logout function
     logout() {
-        // Clear gene data when logging out
-        localStorage.removeItem('mappedGeneSymbols');
-        localStorage.removeItem('geneUploads');
-        localStorage.removeItem('psiResult');
+        // Clear all gene data when logging out
+        this.clearGeneData();
         
         // BACKEND_INTEGRATION: Replace with API call: POST /api/auth/logout
         this.clearCurrentUser();

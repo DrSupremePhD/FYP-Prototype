@@ -855,9 +855,6 @@ VALUES ('seed_risk_020', 'patient_test_3', 52.0, 'disease_cardiovascular_1', 4, 
 
 -- October 2025
 INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
-VALUES ('seed_risk_021', 'patient_test_3', 0.0, 'disease_lung_cancer_1', 0, '[]', 0.0, '2025-10-15T16:30:00.000Z');
-
-INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
 VALUES ('seed_risk_022', 'patient_test_3', 10.0, 'disease_obesity_1', 1, '["FTO"]', 10.0, '2025-10-15T16:30:30.000Z');
 
 -- December 2025
@@ -890,6 +887,26 @@ VALUES ('seed_risk_029', 'patient_test_4', 40.0, 'disease_obesity_1', 4, '["FTO"
 
 INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
 VALUES ('seed_risk_030', 'patient_test_4', 57.6, 'disease_colorectal_1', 4, '["APC","MLH1","MSH2","SMAD4"]', 57.6, '2025-11-25T14:15:30.000Z');
+
+-- ===================================
+-- SAMPLE RISK ASSESSMENTS FOR NEW PATIENTS
+-- ===================================
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('risk_p5_001', 'patient_005', 75.0, 'disease_diabetes_1', 3, '["TCF7L2","PPARG","FTO"]', 75.0, datetime('now', '-28 days'));
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('risk_p6_001', 'patient_006', 50.0, 'disease_extra_002', 1, '["BRCA1"]', 50.0, datetime('now', '-22 days'));
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('risk_p7_001', 'patient_007', 25.0, 'disease_extra_004', 0, '[]', 25.0, datetime('now', '-18 days'));
+
+INSERT OR IGNORE INTO risk_assessments (id, user_id, overall_risk, disease_id, match_count, matched_genes, risk_percentage, created_at)
+VALUES ('risk_p8_001', 'patient_008', 50.0, 'disease_extra_001', 2, '["TP53","EGFR"]', 50.0, datetime('now', '-15 days'));
+
+-- ===================================
+-- END OF EXPANDED SEED DATA
+-- ===================================
 
 -- ===================================
 -- Caregiver Access Table
@@ -1638,58 +1655,3 @@ INSERT OR IGNORE INTO disease_genes (id, disease_id, gene_symbol, hash_value, cr
 VALUES ('gene_apoe_extra', 'disease_extra_005', 'APOE', 
         'b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9', datetime('now', '-130 days'), datetime('now', '-4 days'));
 
--- ===================================
--- SAMPLE RISK ASSESSMENTS FOR NEW PATIENTS
--- ===================================
-
-INSERT OR IGNORE INTO risk_assessments (
-    id, user_id, disease_id, overall_risk, match_count,
-    created_at
-) VALUES (
-    'risk_p5_001',
-    'patient_005',
-    'disease_diabetes_1',
-    75.0,
-    3,
-    datetime('now', '-28 days')
-);
-
-INSERT OR IGNORE INTO risk_assessments (
-    id, user_id, disease_id, overall_risk, match_count,
-    created_at
-) VALUES (
-    'risk_p6_001',
-    'patient_006',
-    'disease_extra_002',
-    50.0,
-    1,
-    datetime('now', '-22 days')
-);
-
-INSERT OR IGNORE INTO risk_assessments (
-    id, user_id, disease_id, overall_risk, match_count,
-    created_at
-) VALUES (
-    'risk_p7_001',
-    'patient_007',
-    'disease_extra_004',
-    25.0,
-    0,
-    datetime('now', '-18 days')
-);
-
-INSERT OR IGNORE INTO risk_assessments (
-    id, user_id, disease_id, overall_risk, match_count,
-    created_at
-) VALUES (
-    'risk_p8_001',
-    'patient_008',
-    'disease_extra_001',
-    50.0,
-    2,
-    datetime('now', '-15 days')
-);
-
--- ===================================
--- END OF EXPANDED SEED DATA
--- ===================================

@@ -472,26 +472,59 @@
 
         // Calculate 5-level distribution from assessments
         // Ranges: 0-20%, >20-40%, >40-60%, >60-80%, >80-100%
+        // DEBUG VERSION - Replace the calculateDistribution function temporarily
         function calculateDistribution(assessments) {
+            console.log('=== DEBUG: calculateDistribution ===');
+            console.log('Total assessments received:', assessments.length);
+            
             const distribution = {
                 veryLow: 0,   // 0-20%
-                low: 0,       // >20-40%
-                medium: 0,    // >40-60%
-                high: 0,      // >60-80%
-                veryHigh: 0   // >80-100%
+                low: 0,       // 21-40%
+                medium: 0,    // 41-60%
+                high: 0,      // 61-80%
+                veryHigh: 0   // 81-100%
             };
 
-            assessments.forEach(a => {
+            assessments.forEach((a, index) => {
                 const risk = a.riskPercentage;
-                if (risk === null || risk === undefined) return;
+                console.log(`Assessment ${index + 1}: riskPercentage =`, risk, `(type: ${typeof risk})`);
                 
-                if (risk > 80) distribution.veryHigh++;
-                else if (risk > 60) distribution.high++;
-                else if (risk > 40) distribution.medium++;
-                else if (risk > 20) distribution.low++;
-                else distribution.veryLow++;
+                // Skip only if null or undefined, but INCLUDE 0
+                if (risk === null || risk === undefined) {
+                    console.log(`  -> SKIPPED (null or undefined)`);
+                    return;
+                }
+                
+                // Use inclusive ranges
+                if (risk >= 81) {
+                    distribution.veryHigh++;
+                    console.log(`  -> veryHigh (>= 81)`);
+                }
+                else if (risk >= 61) {
+                    distribution.high++;
+                    console.log(`  -> high (61-80)`);
+                }
+                else if (risk >= 41) {
+                    distribution.medium++;
+                    console.log(`  -> medium (41-60)`);
+                }
+                else if (risk >= 21) {
+                    distribution.low++;
+                    console.log(`  -> low (21-40)`);
+                }
+                else if (risk >= 0) {
+                    distribution.veryLow++;
+                    console.log(`  -> veryLow (0-20)`);
+                }
+                else {
+                    console.log(`  -> NOT CATEGORIZED! Risk value:`, risk);
+                }
             });
 
+            console.log('Final distribution:', distribution);
+            console.log('Total categorized:', Object.values(distribution).reduce((sum, val) => sum + val, 0));
+            console.log('=================================');
+            
             return distribution;
         }
 
@@ -793,6 +826,46 @@
             try {
                 const analytics = await API.getDiseaseAnalytics(diseaseId);
                 
+                
+                // Find where you call API.getDiseaseAnalytics() and add this right after:
+
+                async function loadAnalytics() {
+                    try {
+                        const diseaseId = new URLSearchParams(window.location.search).get('id');
+                        
+                        if (!diseaseId) {
+                            // ... error handling
+                        }
+
+                        const response = await API.getDiseaseAnalytics(diseaseId);
+                        const analytics = response.analytics;
+                        
+                        // 🐛 DEBUG: Check what we received from backend
+                        console.log('=== BACKEND DATA DEBUG ===');
+                        console.log('Full analytics object:', analytics);
+                        console.log('Statistics:', analytics.statistics);
+                        console.log('Recent assessments:', analytics.recentAssessments);
+                        console.log('Number of recent assessments:', analytics.recentAssessments?.length);
+                        
+                        // Check each assessment's riskPercentage
+                        analytics.recentAssessments?.forEach((a, i) => {
+                            console.log(`Backend Assessment ${i + 1}:`, {
+                                id: a.id,
+                                riskPercentage: a.riskPercentage,
+                                type: typeof a.riskPercentage,
+                                matchCount: a.matchCount,
+                                createdAt: a.createdAt
+                            });
+                        });
+                        console.log('========================');
+
+                        renderAnalytics(analytics);
+
+                    } catch (error) {
+                        console.error('Error loading analytics:', error);
+                        // ... error handling
+                    }
+                }
                 if (!analytics) {
                     content.innerHTML = `
                         <div class="empty-state">

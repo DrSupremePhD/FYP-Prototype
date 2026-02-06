@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Gene Data - PrivaGene</title>
 
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/components.css">
 </head>
-
 
 <body>
     <!-- Sidebar (same as dashboard) -->
@@ -25,13 +22,11 @@
             </a>
         </div>
 
-
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
             <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
         </div>
-
 
         <nav>
             <ul class="sidebar-menu">
@@ -50,7 +45,6 @@
             </ul>
         </nav>
 
-
         <div style="margin-top: auto;">
             <button id="logout-btn" class="sidebar-link"
                 style="width: 100%; border: none; background: transparent; cursor: pointer;">
@@ -59,19 +53,16 @@
         </div>
     </aside>
 
-
     <!-- Main Content -->
     <main class="main-with-sidebar">
         <div class="container-narrow">
             <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
-
 
             <div style="margin-bottom: var(--space-2xl); margin-top: var(--space-lg);">
                 <h1 style="font-size: var(--text-4xl); font-weight: 700; margin-bottom: var(--space-sm);">Upload Genetic
                     Data</h1>
                 <p class="text-secondary">Upload your genetic data file for secure analysis</p>
             </div>
-
 
             <div class="alert alert-info" style="margin-bottom: var(--space-2xl);">
                 <span class="alert-icon">ℹ️</span>
@@ -83,7 +74,6 @@
                 </div>
             </div>
 
-
             <!-- Upload Area -->
             <div class="card" id="upload-card">
                 <div class="file-upload" id="dropZone">
@@ -92,7 +82,6 @@
                     <div class="file-upload-text">Drop your file here or click to browse</div>
                     <div class="file-upload-hint">Maximum file size: 100MB</div>
                 </div>
-
 
                 <div id="fileInfo" style="display: none; margin-top: var(--space-lg);">
                     <div
@@ -106,13 +95,11 @@
                             <button id="removeFile" class="btn btn-ghost btn-sm">Remove</button>
                         </div>
 
-
                         <div class="progress" id="progressBar" style="display: none;">
                             <div class="progress-bar progress-bar-animated" id="progress" style="width: 0%;"></div>
                         </div>
                     </div>
                 </div>
-
 
                 <div style="margin-top: var(--space-xl);">
                     <button id="uploadBtn" class="btn btn-primary btn-block btn-lg" disabled>
@@ -120,7 +107,6 @@
                     </button>
                 </div>
             </div>
-
 
             <!-- Previous Uploads -->
             <div class="card" style="margin-top: var(--space-2xl);">
@@ -132,16 +118,13 @@
                 </div>
             </div>
 
-
         </div>
     </main>
-
 
     <!-- File Format Guide Modal -->
     <div id="formatGuideModal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" id="closeFormatGuide">&times;</span>
-
 
             <h2>How to Format Your Genetic Data File</h2>
             <p>Your file should contain a list of <strong>gene symbols</strong> such as <code>BRCA1</code>, <code>TP53</code>, <code>EGFR</code>, etc.</p>
@@ -192,26 +175,17 @@
     x y z         (too vague, not gene symbols)
             </pre>
 
-
-            <p>Your file does <strong>NOT</strong> need chromosome numbers, rsIDs, or genotype columns.</p>
+            <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                <strong>Note:</strong> Gene symbol validation is approximate. If you're unsure, include it anyway.
+            </p>
         </div>
     </div>
 
-
-
-
-
-    <!-- 
     <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
-    -->
-    <script src="../../js/api-backend.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/navigation.js"></script>
     <script src="../../js/gene-utils.js"></script>
-
-
-
 
     <script>
         Auth.requireRole('patient');
@@ -219,9 +193,7 @@
         Navigation.displayUserInfo(user);
         Navigation.setActiveNav();
 
-
         document.getElementById('logout-btn').addEventListener('click', () => Auth.logout());
-
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
@@ -229,18 +201,15 @@
         const uploadBtn = document.getElementById('uploadBtn');
         let selectedFile = null;
 
-
         // Drag and drop handlers
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
         });
 
-
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
         }
-
 
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
@@ -248,13 +217,11 @@
             });
         });
 
-
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.remove('drag-over');
             });
         });
-
 
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
@@ -263,13 +230,11 @@
             }
         });
 
-
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 handleFile(e.target.files[0]);
             }
         });
-
 
         function handleFile(file) {
             selectedFile = file;
@@ -278,7 +243,6 @@
             fileInfo.style.display = 'block';
             uploadBtn.disabled = false;
         }
-
 
         document.getElementById('removeFile').addEventListener('click', () => {
             selectedFile = null;
@@ -401,7 +365,11 @@
                                     🔒 Stored securely in your browser
                                 </div>
                             </div>
-                            <span class="badge badge-success">${upload.status}</span>
+                            <div>
+                                <a href="disease-selection.html" class="btn btn-primary btn-sm">
+                                    Continue to Disease Selection →
+                                </a>
+                            </div>
                         </div>
                     </div>
                 `).join('');
@@ -423,10 +391,11 @@
         closeBtn.onclick = () => modal.style.display = "none";
 
         window.onclick = (event) => {
-            if (event.target === modal) modal.style.display = "none";
-        }
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
     </script>
 </body>
-
 
 </html>
