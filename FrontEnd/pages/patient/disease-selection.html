@@ -25,7 +25,7 @@
         <div
             style="margin-bottom: var(--space-xl); padding: var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md);">
             <div style="font-weight: 600; margin-bottom: var(--space-xs);" data-user-name>User</div>
-            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f184829483b19489909c819d94df929e9c">[email&#160;protected]</a></div>
+            <div style="font-size: var(--text-sm); color: var(--text-tertiary);" data-user-email>user@example.com</div>
         </div>
 
         <nav>
@@ -100,7 +100,7 @@
                                 <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                             <input 
-                                type="search" 
+                                type="text" 
                                 id="searchInput" 
                                 placeholder="Search diseases by name or code..." 
                                 style="width: 100%; padding: 12px 40px 12px 44px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: var(--text-base); background: white; transition: border-color 0.2s;">
@@ -137,7 +137,7 @@
         </div>
     </main>
 
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="../../js/config.js"></script>
+    <script src="../../js/config.js"></script>
     <script src="../../js/storage.js"></script>
     <script src="../../js/api-backend.js"></script>
     <script src="../../js/auth.js"></script>
@@ -165,10 +165,10 @@
 
         async function loadCategories() {
             try {
-                // Check localStorage for uploaded file
-                const uploads = JSON.parse(localStorage.getItem("geneUploads") || "[]");
+                // Check if genes are stored
+                const mappedGenes = localStorage.getItem("mappedGeneSymbols");
 
-                if (uploads.length === 0) {
+                if (!mappedGenes) {
                     document.getElementById('no-upload-warning').style.display = 'flex';
                     document.getElementById('selection-card').style.display = 'none';
                     return;
@@ -195,8 +195,8 @@
 
                 // Build hospital filters
                 buildHospitalFilters();
-
-                // Display all categories initially
+                
+                // Display categories
                 displayCategories(filteredCategories);
                 updateCounts();
 
@@ -207,24 +207,23 @@
         }
 
         function buildHospitalFilters() {
-            // Get unique hospitals
             const hospitals = [...new Set(allCategories.map(c => c.hospitalName || 'Unknown'))];
-            const container = document.getElementById('hospitalFilters');
-
-            container.innerHTML = hospitals.map(hospital => `
-                <label class="form-checkbox" style="display: flex; align-items: center; margin: 0; padding: var(--space-xs) var(--space-sm); background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                    <input type="checkbox" value="${hospital}" class="hospital-filter" style="margin-right: var(--space-xs);">
-                    <span style="font-size: var(--text-sm);">${hospital}</span>
+            const filtersContainer = document.getElementById('hospitalFilters');
+            
+            filtersContainer.innerHTML = hospitals.map(hospital => `
+                <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm);">
+                    <input type="checkbox" class="hospital-filter" value="${hospital}" style="margin: 0;">
+                    <span>${hospital}</span>
                 </label>
             `).join('');
 
-            // Add event listeners
+            // Add event listeners to hospital filters
             document.querySelectorAll('.hospital-filter').forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    if (checkbox.checked) {
-                        selectedHospitals.add(checkbox.value);
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedHospitals.add(e.target.value);
                     } else {
-                        selectedHospitals.delete(checkbox.value);
+                        selectedHospitals.delete(e.target.value);
                     }
                     filterCategories();
                 });
@@ -235,28 +234,29 @@
             const searchQuery = searchInput.value.toLowerCase().trim();
             
             filteredCategories = allCategories.filter(category => {
-                // Search filter - only search by name and disease code
+                // Search filter
                 const matchesSearch = !searchQuery || 
-                    (category.name || '').toLowerCase().includes(searchQuery) ||
-                    (category.diseaseCode || '').toLowerCase().includes(searchQuery);
-
+                    category.name.toLowerCase().includes(searchQuery) ||
+                    (category.diseaseCode && category.diseaseCode.toLowerCase().includes(searchQuery)) ||
+                    (category.description && category.description.toLowerCase().includes(searchQuery));
+                
                 // Hospital filter
                 const matchesHospital = selectedHospitals.size === 0 || 
                     selectedHospitals.has(category.hospitalName || 'Unknown');
-
+                
                 return matchesSearch && matchesHospital;
             });
 
             displayCategories(filteredCategories);
             updateCounts();
-
+            
             // Show/hide clear filters button
             clearFiltersBtn.style.display = selectedHospitals.size > 0 ? 'inline-block' : 'none';
         }
 
         function displayCategories(categories) {
             const container = document.getElementById('categories-list');
-
+            
             if (categories.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state" style="padding: var(--space-xl);">

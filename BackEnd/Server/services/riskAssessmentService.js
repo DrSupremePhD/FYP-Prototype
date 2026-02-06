@@ -104,10 +104,10 @@ const riskAssessmentService = {
     return assessments.map(a => ({
       id: a.id,
       userId: a.userId,
-      overallRisk: a.overallRisk,
+      overallRisk: encryptionService.decryptNumber(a.overallRisk),
       diseaseId: a.diseaseId,
       matchCount: a.matchCount,
-      riskPercentage: a.riskPercentage,
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
       createdAt: a.createdAt
       // NOTE: matched_genes is intentionally excluded for caregiver privacy
     }));
@@ -365,7 +365,7 @@ const riskAssessmentService = {
       // Return anonymized assessments (no user IDs)
       recentAssessments: assessments.slice(0, 20).map(a => ({
         id: a.id,
-        riskPercentage: a.riskPercentage,
+        riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
         matchCount: a.matchCount,
         matchedGenes: JSON.parse(a.matchedGenes || '[]'),
         createdAt: a.createdAt,
@@ -445,7 +445,7 @@ const riskAssessmentService = {
 
     return assessments.map(a => ({
       id: a.id,
-      riskPercentage: a.riskPercentage,
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
       matchCount: a.matchCount,
       createdAt: a.createdAt,
       dateOfBirth: a.dateOfBirth,
@@ -492,10 +492,10 @@ const riskAssessmentService = {
     // Return anonymized data - NO user_id, names, emails, phones
     return assessments.map(a => ({
       id: a.id,
-      overallRisk: a.overallRisk,
+      overallRisk: encryptionService.decryptNumber(a.overallRisk),
       diseaseId: a.diseaseId,
       matchCount: a.matchCount,
-      riskPercentage: a.riskPercentage,
+      riskPercentage: encryptionService.decryptNumber(a.riskPercentage),
       createdAt: a.createdAt,
       dateOfBirth: a.dateOfBirth, // For age grouping only
       diseaseName: a.diseaseName || 'Unknown Disease',

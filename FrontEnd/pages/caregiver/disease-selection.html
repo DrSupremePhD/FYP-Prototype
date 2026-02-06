@@ -76,25 +76,67 @@
                 </div>
             </div>
 
-            <div class="card" id="selection-card">
-                <div class="card-header">
-                    <h3 class="card-title">Available Disease Categories</h3>
-                    <div class="text-secondary text-sm">Select one or more categories to compute risk</div>
-                </div>
-
-                <div id="categories-list">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-
-                <div class="card-footer">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div class="text-secondary">
-                            <span id="selectedCount">0</span> categories selected
-                        </div>
-                        <button id="computeBtn" class="btn btn-primary btn-lg" disabled>
-                            Compute Risk Assessment
-                        </button>
+            <!-- Compute Button and Selection Count (Outside Card) -->
+            <div style="margin-bottom: var(--space-lg); display: flex; justify-content: space-between; align-items: center; gap: var(--space-md);">
+                <div>
+                    <div style="font-weight: 600; margin-bottom: var(--space-xs);">
+                        <span id="selectedCount">0</span> disease(s) selected
                     </div>
+                    <div class="text-secondary text-sm">Select at least one disease to begin assessment</div>
+                </div>
+                <div style="display: flex; gap: var(--space-sm);">
+                    <button id="deselectAllBtn" class="btn btn-outline" style="display: none;">
+                        Deselect All
+                    </button>
+                    <button id="computeBtn" class="btn btn-primary" disabled>
+                        Compute Risk Assessment
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" id="selection-card">
+                <!-- Search and Filter Bar -->
+                <div style="padding: var(--space-lg); background: var(--bg-secondary); border-radius: var(--radius-md) var(--radius-md) 0 0;">
+                    <!-- Search Bar -->
+                    <div style="margin-bottom: var(--space-md);">
+                        <div style="position: relative;">
+                            <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                placeholder="Search diseases by name or code..." 
+                                style="width: 100%; padding: 12px 40px 12px 44px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: var(--text-base); background: white; transition: border-color 0.2s;">
+                            <button id="clearSearch" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; display: none; color: var(--text-tertiary);">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hospital Filter -->
+                    <div style="display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+                        <label style="font-weight: 500; color: var(--text-secondary);">Filter by Provider:</label>
+                        <div id="hospitalFilters" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                        <button id="clearFilters" class="btn btn-sm btn-outline" style="display: none;">Clear Filters</button>
+                    </div>
+
+                    <!-- Results Count -->
+                    <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--border-light);">
+                        <div class="text-secondary text-sm">
+                            Showing <span id="displayCount">0</span> of <span id="totalCount">0</span> diseases
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disease List -->
+                <div id="categories-list" style="max-height: 600px; overflow-y: auto;">
+                    <!-- Will be populated by JavaScript -->
                 </div>
             </div>
         </div>
@@ -108,7 +150,9 @@
     <script src="../../js/run-psi.js"></script>
 
     <script>
-        let categoriesList = [];
+        let allCategories = [];
+        let filteredCategories = [];
+        let selectedHospitals = new Set();
 
         Auth.requireRole('caregiver');
         const user = Auth.getCurrentUser();
@@ -133,6 +177,9 @@
         const selectedCategories = new Set();
         const computeBtn = document.getElementById('computeBtn');
         const selectedCount = document.getElementById('selectedCount');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const clearFiltersBtn = document.getElementById('clearFilters');
 
         // Load patient information for context
         let patientData = null;
@@ -175,11 +222,12 @@
                 // Fetch disease categories from backend database
                 const categories = await API.getDiseaseCategories();
                 console.log('Categories received:', categories);
-                const container = document.getElementById('categories-list');
                 
-                categoriesList = categories;
+                allCategories = categories;
+                filteredCategories = categories;
 
                 if (categories.length === 0) {
+                    const container = document.getElementById('categories-list');
                     container.innerHTML = `
                         <div class="empty-state" style="padding: var(--space-xl);">
                             <div class="empty-state-icon">🔬</div>
@@ -190,37 +238,12 @@
                     return;
                 }
 
-                container.innerHTML = categories.map(category => `
-                    <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
-                        <input type="checkbox" value="${category.id}" class="category-checkbox" style="margin-right: var(--space-md);">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
-                            <div class="text-secondary text-sm">${category.description || 'No description available'}</div>
-                            <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
-                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                                    🏥 Provider: ${category.hospitalName || 'Unknown'}
-                                </span>
-                                ${category.diseaseCode ? `
-                                <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">
-                                    Code: ${category.diseaseCode}
-                                </span>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </label>
-                `).join('');
-
-                // Add change listeners
-                document.querySelectorAll('.category-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', () => {
-                        if (checkbox.checked) {
-                            selectedCategories.add(checkbox.value);
-                        } else {
-                            selectedCategories.delete(checkbox.value);
-                        }
-                        updateSelection();
-                    });
-                });
+                // Build hospital filters
+                buildHospitalFilters();
+                
+                // Display categories
+                displayCategories(filteredCategories);
+                updateCounts();
 
             } catch (error) {
                 console.error('Error loading categories:', error);
@@ -228,10 +251,152 @@
             }
         }
 
+        function buildHospitalFilters() {
+            const hospitals = [...new Set(allCategories.map(c => c.hospitalName || 'Unknown'))];
+            const filtersContainer = document.getElementById('hospitalFilters');
+            
+            filtersContainer.innerHTML = hospitals.map(hospital => `
+                <label style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm);">
+                    <input type="checkbox" class="hospital-filter" value="${hospital}" style="margin: 0;">
+                    <span>${hospital}</span>
+                </label>
+            `).join('');
+
+            // Add event listeners to hospital filters
+            document.querySelectorAll('.hospital-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedHospitals.add(e.target.value);
+                    } else {
+                        selectedHospitals.delete(e.target.value);
+                    }
+                    filterCategories();
+                });
+            });
+        }
+
+        function filterCategories() {
+            const searchQuery = searchInput.value.toLowerCase().trim();
+            
+            filteredCategories = allCategories.filter(category => {
+                // Search filter
+                const matchesSearch = !searchQuery || 
+                    category.name.toLowerCase().includes(searchQuery) ||
+                    (category.diseaseCode && category.diseaseCode.toLowerCase().includes(searchQuery)) ||
+                    (category.description && category.description.toLowerCase().includes(searchQuery));
+                
+                // Hospital filter
+                const matchesHospital = selectedHospitals.size === 0 || 
+                    selectedHospitals.has(category.hospitalName || 'Unknown');
+                
+                return matchesSearch && matchesHospital;
+            });
+
+            displayCategories(filteredCategories);
+            updateCounts();
+            
+            // Show/hide clear filters button
+            clearFiltersBtn.style.display = selectedHospitals.size > 0 ? 'inline-block' : 'none';
+        }
+
+        function displayCategories(categories) {
+            const container = document.getElementById('categories-list');
+            
+            if (categories.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: var(--space-xl);">
+                        <div class="empty-state-icon">🔍</div>
+                        <div class="empty-state-description">No diseases match your search</div>
+                        <p class="text-secondary">Try adjusting your search or filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = categories.map(category => `
+                <label class="form-checkbox" style="padding: var(--space-md); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex;">
+                    <input type="checkbox" value="${category.id}" class="category-checkbox" ${selectedCategories.has(category.id) ? 'checked' : ''} style="margin-right: var(--space-md);">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; margin-bottom: var(--space-xs);">${category.name}</div>
+                        <div class="text-secondary text-sm">${category.description || 'No description available'}</div>
+                        <div class="text-secondary text-sm" style="margin-top: var(--space-xs);">
+                            <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                                🏥 Provider: ${category.hospitalName || 'Unknown'}
+                            </span>
+                            ${category.diseaseCode ? `
+                            <span style="background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">
+                                Code: ${category.diseaseCode}
+                            </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </label>
+            `).join('');
+
+            // Add change listeners
+            document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        selectedCategories.add(checkbox.value);
+                    } else {
+                        selectedCategories.delete(checkbox.value);
+                    }
+                    updateSelection();
+                });
+            });
+        }
+
+        function updateCounts() {
+            document.getElementById('displayCount').textContent = filteredCategories.length;
+            document.getElementById('totalCount').textContent = allCategories.length;
+        }
+
         function updateSelection() {
+            const deselectBtn = document.getElementById('deselectAllBtn');
             selectedCount.textContent = selectedCategories.size;
             computeBtn.disabled = selectedCategories.size === 0;
+            
+            // Show/hide deselect button based on selection count
+            deselectBtn.style.display = selectedCategories.size > 0 ? 'inline-block' : 'none';
         }
+
+        // Search functionality
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearSearchBtn.style.display = query ? 'flex' : 'none';
+            filterCategories();
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            filterCategories();
+            searchInput.focus();
+        });
+
+        // Clear all filters
+        clearFiltersBtn.addEventListener('click', () => {
+            // Uncheck all hospital filters
+            document.querySelectorAll('.hospital-filter').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedHospitals.clear();
+            filterCategories();
+        });
+
+        // Deselect all selected diseases
+        document.getElementById('deselectAllBtn').addEventListener('click', () => {
+            // Clear the selected categories Set
+            selectedCategories.clear();
+            
+            // Uncheck all category checkboxes
+            document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Update the UI
+            updateSelection();
+        });
 
         computeBtn.addEventListener("click", async () => {
             const selectedDiseaseID = Array.from(selectedCategories);
@@ -242,7 +407,7 @@
                 return;
             }
 
-            // Check permission before running (New)
+            // Check permission before running
             try {
                 const patients = await API.getPatientsForCaregiver(user.id, 'active');
                 const patientAccess = patients.patients.find(p => p.patient_id === patientId);
@@ -319,6 +484,7 @@
             }
         });
 
+        // Initial load
         loadCategories();
     </script>
 </body>

@@ -32,7 +32,7 @@ const encryptionService = {
             let encrypted = cipher.update(plainText, 'utf8', 'hex');
             encrypted += cipher.final('hex');
 
-            // Return IV + encrypted data (we need IV for decryption)
+            // Return IV + encrypted data (need IV for decryption)
             return iv.toString('hex') + ':' + encrypted;
         } catch (err) {
             console.error('Encryption error:', err);
@@ -49,10 +49,20 @@ const encryptionService = {
         if (!encryptedText) return null;
 
         try {
+            // BUGFIX: Handle non-string types (legacy unencrypted data)
+            if (typeof encryptedText !== 'string') {
+                return String(encryptedText); // Return as-is, converted to string
+            }
+
+            // BUGFIX: Check if data looks encrypted (has iv:data format)
+            if (!encryptedText.includes(':')) {
+                return encryptedText; // Return as-is (legacy unencrypted data)
+            }
+
             // Split IV and encrypted data
             const parts = encryptedText.split(':');
             if (parts.length !== 2) {
-                throw new Error('Invalid encrypted data format');
+                return encryptedText; 
             }
 
             const iv = Buffer.from(parts[0], 'hex');
@@ -68,7 +78,8 @@ const encryptionService = {
             return decrypted;
         } catch (err) {
             console.error('Decryption error:', err);
-            throw new Error('Failed to decrypt data');
+            // Return original value - allows graceful degradation
+            return String(encryptedText);
         }
     },
 
@@ -95,7 +106,12 @@ const encryptionService = {
             return JSON.parse(decrypted);
         } catch (err) {
             console.error('JSON decryption error:', err);
-            throw new Error('Failed to decrypt JSON data');
+            // BUGFIX: Try to return as-is if it's already valid JSON
+            try {
+                return JSON.parse(encryptedJSON);
+            } catch {
+                return null;
+            }
         }
     },
 
@@ -117,8 +133,20 @@ const encryptionService = {
     decryptNumber(encryptedNum) {
         if (!encryptedNum) return null;
 
+        // Handle case where value is already a number (legacy data)
+        if (typeof encryptedNum === 'number') {
+            return encryptedNum;
+        }
+
         const decrypted = this.decrypt(encryptedNum);
-        return parseFloat(decrypted);
+        const num = parseFloat(decrypted);
+        
+        // Validate the result
+        if (isNaN(num)) {
+            return null;
+        }
+        
+        return num;
     }
 };
 
