@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "migrate": "node -e \"require('../DBMS/db/db').runMigrations(true)\""
+    "migrate": "node -e \"require('../DBMS/db/db').runMigrations(true)\"",
+    "test": "jest"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -13,5 +14,8 @@
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.6",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
