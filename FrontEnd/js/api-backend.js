@@ -267,6 +267,40 @@ const BackendAPI = {
     },
 
     /**
+     * Update user password
+     * @param {string} userId - User ID
+     * @param {string} currentPassword - Current password for verification
+     * @param {string} newPassword - New password to set
+     * @returns {Promise<Object>} Success response
+     */
+    async updatePassword(userId, currentPassword, newPassword) {
+        if (!this.config.enabled) {
+            throw new Error('Backend not enabled');
+        }
+
+        try {
+            const response = await fetch(`${this.config.baseURL}/api/users/${userId}/password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update password');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error updating password:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Delete a user
      * @param {string} userId - User ID
      * @returns {Promise<boolean>} Success status

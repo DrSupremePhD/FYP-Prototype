@@ -275,6 +275,108 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
+// Change password for authenticated user
+app.put('/api/users/:id/password', async (req, res) => {
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  try {
+    const { id } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['currentPassword', 'newPassword']
+      });
+    }
+
+    // Validate new password length
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+
+    // Get user from database
+    const user = await userService.getUserById(id);
+    if (!user) {
+      await auditService.createLog({
+        userId: id,
+        action: 'password_change',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'User not found' }
+      });
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // Verify current password using bcrypt
+    const bcrypt = require('bcrypt');
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    
+    if (!isValidPassword) {
+      await auditService.createLog({
+        userId: id,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'password_change',
+        status: 'failure',
+        severity: 'warning',
+        ipAddress,
+        userAgent,
+        details: { reason: 'Invalid current password' }
+      });
+      return res.status(401).json({
+        error: 'Invalid current password',
+        message: 'The current password you entered is incorrect'
+      });
+    }
+
+    // Change password (will hash the new password)
+    await userService.changePassword(id, newPassword);
+
+    // Log successful password change
+    await auditService.createLog({
+      userId: id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'password_change',
+      status: 'success',
+      severity: 'info',
+      ipAddress,
+      userAgent,
+      details: { message: 'Password changed successfully' }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Password change error:', err);
+    await auditService.createLog({
+      userId: req.params.id,
+      action: 'password_change',
+      status: 'failure',
+      severity: 'error',
+      ipAddress,
+      userAgent,
+      details: { error: err.message }
+    });
+    return res.status(500).json({
+      error: 'Failed to change password',
+      message: err.message
+    });
+  }
+});
+
 // Get user by ID
 app.get('/api/users/:id', async (req, res) => {
   try {

@@ -124,12 +124,11 @@
                 </div>
             </div>
 
-            <!-- Security -->
+            <!-- Change Password -->
             <div class="card" style="margin-bottom: var(--space-xl);">
                 <div class="card-header">
                     <h3 class="card-title">Security</h3>
                 </div>
-
                 <div style="padding: var(--space-md);">
                     <button onclick="showChangePasswordModal()" class="btn btn-outline">Change Password</button>
                 </div>
@@ -284,26 +283,28 @@
         });
 
         function showChangePasswordModal() {
+            const user = Auth.getCurrentUser();
             UI.showModal({
                 title: 'Change Password',
                 body: `
-          <form id="password-form">
-            <div class="form-group">
-              <label for="currentPassword" class="form-label form-label-required">Current Password</label>
-              <input type="password" id="currentPassword" class="form-input" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="newPassword" class="form-label form-label-required">New Password</label>
-              <input type="password" id="newPassword" class="form-input" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="confirmPassword" class="form-label form-label-required">Confirm New Password</label>
-              <input type="password" id="confirmPassword" class="form-input" required>
-            </div>
-          </form>
-        `,
+                <form id="password-form">
+                    <div class="form-group">
+                    <label for="currentPassword" class="form-label form-label-required">Current Password</label>
+                    <input type="password" id="currentPassword" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                    <label for="newPassword" class="form-label form-label-required">New Password</label>
+                    <input type="password" id="newPassword" class="form-input" required minlength="8">
+                    <small class="text-secondary" style="display: block; margin-top: var(--space-xs);">Must be at least 8 characters</small>
+                    </div>
+                    
+                    <div class="form-group">
+                    <label for="confirmPassword" class="form-label form-label-required">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" class="form-input" required>
+                    </div>
+                </form>
+                `,
                 buttons: [
                     { text: 'Cancel', className: 'btn btn-outline' },
                     {
@@ -333,14 +334,13 @@
                             UI.showLoading('Changing password...');
 
                             try {
-                                // TODO: BACKEND_INTEGRATION - Implement password change endpoint
-                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                await BackendAPI.updatePassword(user.id, current, newPass);
                                 UI.hideLoading();
-                                UI.showAlert('Password change feature is not yet implemented. Please contact support.', 'info');
+                                UI.showAlert('Password changed successfully!', 'success');
                                 return true;
                             } catch (error) {
                                 UI.hideLoading();
-                                UI.showAlert('Failed to change password: ' + error.message, 'error');
+                                UI.showAlert(error.message || 'Failed to change password', 'error');
                                 return false;
                             }
                         }
