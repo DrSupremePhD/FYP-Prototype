@@ -473,7 +473,7 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // Permanently delete user (hard delete) - Admin only, for GDPR compliance
-app.delete('/api/users/:id/permanent', requireRole(['system_admin']), async (req, res) => {
+app.delete('/api/users/:id/permanent', requireRole(['admin']), async (req, res) => {
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
   

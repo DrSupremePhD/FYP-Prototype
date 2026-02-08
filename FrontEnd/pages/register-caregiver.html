@@ -221,7 +221,6 @@
         const passwordHint = document.getElementById('passwordHint');
 
         // Check for pending invitations when email is entered
-        // TODO: Implement backend API for family access invitations
         emailInput.addEventListener('blur', checkPendingInvitations);
 
         function checkPendingInvitations() {

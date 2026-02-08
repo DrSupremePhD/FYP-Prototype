@@ -343,10 +343,13 @@ const BackendAPI = {
         }
 
         try {
+            const user = this.getCurrentUser();
+            
             const response = await fetch(`${this.config.baseURL}/api/users/${userId}/permanent`, {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Role': user?.role || 'system_admin'
                 }
             });
 

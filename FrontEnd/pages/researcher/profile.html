@@ -114,7 +114,7 @@
                     <p class="text-secondary" style="margin-bottom: var(--space-md);">
                         Once you delete your account, all your data will be permanently removed. This cannot be undone.
                     </p>
-                    <button onclick="deleteAccount()" class="btn btn-danger">Delete Account</button>
+                    <button onclick="confirmDeleteAccount()" class="btn btn-danger">Delete Account</button>
                 </div>
             </div>
         </div>
@@ -278,30 +278,33 @@
             });
         }
 
-        async function deleteAccount() {
+        async function confirmDeleteAccount() {
             const confirmed = await UI.confirm(
-                'Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.'
+                'Are you sure you want to delete your account? This action cannot be undone.'
             );
-
             if (!confirmed) return;
 
             const doubleConfirm = await UI.confirm(
-                'This is your last chance. Are you really sure?'
+                'This will permanently remove all your data. Continue?'
             );
-
             if (!doubleConfirm) return;
 
             UI.showLoading('Deleting account...');
-
             try {
-                // TODO: BACKEND_INTEGRATION - Implement account deletion endpoint
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                UI.hideLoading();
-                UI.showAlert('Account deletion feature is not yet implemented. Please contact support.', 'info');
+                const user = Auth.getCurrentUser();
+                
+                // Soft delete - Admin can restore later
+                await API.deleteUser(user.id);
 
+                UI.hideLoading();
+                UI.showAlert('Account deleted. Redirecting...', 'info');
+
+                setTimeout(() => {
+                    Auth.logout();
+                }, 2000);
             } catch (error) {
                 UI.hideLoading();
-                UI.showAlert('Failed to delete account: ' + error.message, 'error');
+                UI.showAlert(error.message || 'Failed to delete account', 'error');
             }
         }
     </script>
