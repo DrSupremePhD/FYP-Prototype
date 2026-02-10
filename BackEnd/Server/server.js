@@ -171,7 +171,7 @@ app.post('/api/users/login', async (req, res) => {
       });
     }
 
-    // 🔒 SECURE: Use authenticateUser instead of manual password comparison
+    // SECURE: Use authenticateUser instead of manual password comparison
     let user;
     try {
       user = await userService.authenticateUser(email, password);
