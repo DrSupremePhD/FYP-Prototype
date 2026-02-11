@@ -112,10 +112,12 @@ class GeneManager {
     async addEntry(data) {
         try {
             // Parse gene symbols from the input (comma-separated string to array)
+            // Handle both gene_symbol (snake_case from form) and geneSymbol (camelCase)
             let geneSymbolsArray = [];
-            if (data.geneSymbol) {
+            const geneSymbolInput = data.gene_symbol || data.geneSymbol;
+            if (geneSymbolInput) {
                 // Split by comma and clean up each symbol
-                geneSymbolsArray = data.geneSymbol
+                geneSymbolsArray = geneSymbolInput
                     .split(',')
                     .map(s => s.trim().toUpperCase())
                     .filter(s => s); // Remove empty strings
@@ -133,11 +135,11 @@ class GeneManager {
             if (this.useBackend) {
                 
 
-                // Use backend API  
+                // Use backend API - handle both naming conventions
                 const entryData = {
                     hospital_id: this.user.id,
-                    disease_name: data.diseaseName,
-                    disease_code: data.diseaseCode,
+                    disease_name: data.disease_name || data.diseaseName,
+                    disease_code: data.disease_code || data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant)
@@ -151,30 +153,43 @@ class GeneManager {
                 console.log('Backend response:', result);
                 
                 // Handle different possible response formats from the backend
-                let entry = null;
+                let backendEntry = null;
                 
                 // Format 1: { success: true, entry: {...} }
                 if (result.success && result.entry) {
-                    entry = result.entry;
+                    backendEntry = result.entry;
                 }
                 // Format 2: { success: true, disease: {...} }
                 else if (result.success && result.disease) {
-                    entry = result.disease;
+                    backendEntry = result.disease;
                 }
                 // Format 3: Direct entry object with id
-                else if (result.id && result.diseaseName) {
-                    entry = result;
+                else if (result.id && (result.diseaseName || result.disease_name)) {
+                    backendEntry = result;
                 }
                 // Format 4: { disease: {...} } without success flag
                 else if (result.disease && result.disease.id) {
-                    entry = result.disease;
+                    backendEntry = result.disease;
                 }
                 
                 // Check if we got a valid entry
-                if (!entry || !entry.id) {
+                if (!backendEntry || !backendEntry.id) {
                     console.error('Invalid response format:', result);
                     throw new Error('Invalid response from server. Expected entry with id.');
                 }
+                
+                // Transform backend response (snake_case) to frontend format (camelCase)
+                const entry = {
+                    id: backendEntry.id,
+                    diseaseName: backendEntry.disease_name || backendEntry.diseaseName,
+                    diseaseCode: backendEntry.disease_code || backendEntry.diseaseCode,
+                    geneSymbols: backendEntry.gene_symbols || backendEntry.geneSymbols || [],
+                    description: backendEntry.description,
+                    constant: backendEntry.constant,
+                    hospitalId: backendEntry.hospital_id || backendEntry.hospitalId,
+                    createdAt: backendEntry.created_at || backendEntry.createdAt,
+                    updatedAt: backendEntry.updated_at || backendEntry.updatedAt
+                };
                 
                 // Success - add to local array and update UI
                 this.entries.unshift(entry);
@@ -190,8 +205,8 @@ class GeneManager {
                 const newEntry = {
                     id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                     hospital_id: this.user.id,
-                    disease_name: data.diseaseName,
-                    disease_code: data.diseaseCode,
+                    disease_name: data.disease_name || data.diseaseName,
+                    disease_code: data.disease_code || data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant),
@@ -239,10 +254,11 @@ class GeneManager {
      */
     async updateEntry(id, data) {
         try {
-            // Parse gene symbols
+            // Parse gene symbols - handle both gene_symbol (from form) and geneSymbol (camelCase)
             let geneSymbolsArray = [];
-            if (data.geneSymbol) {
-                geneSymbolsArray = data.geneSymbol
+            const geneSymbolInput = data.gene_symbol || data.geneSymbol;
+            if (geneSymbolInput) {
+                geneSymbolsArray = geneSymbolInput
                     .split(',')
                     .map(s => s.trim().toUpperCase())
                     .filter(s => s);
@@ -254,19 +270,36 @@ class GeneManager {
             }
             
             if (this.useBackend) {
-                // Use backend API
+                // Use backend API - backend expects snake_case
                 const updateData = {
-                    disease_name: data.diseaseName,
-                    disease_code: data.diseaseCode,
+                    disease_name: data.disease_name || data.diseaseName,
+                    disease_code: data.disease_code || data.diseaseCode,
                     gene_symbols: geneSymbolsArray,
                     description: data.description || '',
                     constant: parseFloat(data.constant)
                 };
 
+                console.log('Sending update to backend:', updateData);
+                
                 const result = await BackendAPI.updateDisease(id, updateData);
                 
+                console.log('Backend update response:', result);
+                
                 if (result.success && (result.entry || result.disease)) {
-                    const entry = result.entry || result.disease;
+                    // Backend returns snake_case, transform to camelCase for frontend consistency
+                    const backendEntry = result.entry || result.disease;
+                    const entry = {
+                        id: backendEntry.id,
+                        diseaseName: backendEntry.disease_name,
+                        diseaseCode: backendEntry.disease_code,
+                        geneSymbols: backendEntry.gene_symbols || [],
+                        description: backendEntry.description,
+                        constant: backendEntry.constant,
+                        hospitalId: backendEntry.hospital_id,
+                        createdAt: backendEntry.created_at,
+                        updatedAt: backendEntry.updated_at
+                    };
+                    
                     const index = this.entries.findIndex(e => e.id === id);
                     if (index !== -1) {
                         this.entries[index] = entry;

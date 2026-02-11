@@ -170,15 +170,22 @@ class ModalManager {
             editIdInput.value = entryId;
 
             // Populate form
-            document.getElementById('diseaseNameInput').value = entry.disease_name;
-            document.getElementById('diseaseCodeInput').value = entry.disease_code;
+            // NOTE: api-backend.js transforms snake_case to camelCase
+            document.getElementById('diseaseNameInput').value = entry.diseaseName || entry.disease_name || '';
+            document.getElementById('diseaseCodeInput').value = entry.diseaseCode || entry.disease_code || '';
             
             // Handle gene symbols - convert array to comma-separated string
             let geneSymbolsStr = '';
-            if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+            if (entry.geneSymbols && Array.isArray(entry.geneSymbols)) {
+                geneSymbolsStr = entry.geneSymbols.join(', ');
+            } else if (entry.gene_symbols && Array.isArray(entry.gene_symbols)) {
+                // Fallback for snake_case format
                 geneSymbolsStr = entry.gene_symbols.join(', ');
+            } else if (entry.geneSymbol) {
+                // Fallback for old single gene format (camelCase)
+                geneSymbolsStr = entry.geneSymbol;
             } else if (entry.gene_symbol) {
-                // Fallback for old format
+                // Fallback for old single gene format (snake_case)
                 geneSymbolsStr = entry.gene_symbol;
             }
             document.getElementById('geneSymbolInput').value = geneSymbolsStr;

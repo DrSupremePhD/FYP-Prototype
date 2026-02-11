@@ -225,9 +225,6 @@
                     </p>
                 </div>
                 <div style="display: flex; gap: var(--space-sm);">
-                    <button id="bulkUploadBtn" class="btn btn-secondary">
-                        📁 Upload CSV
-                    </button>
                     <button id="addGeneBtn" class="btn btn-primary">
                         + Add Disease
                     </button>
@@ -356,79 +353,6 @@
         </div>
     </div>
 
-    <!-- CSV Upload Modal -->
-    <div class="modal-overlay" id="uploadModal">
-        <div class="modal-content" style="max-width: 550px;">
-            <span class="modal-close" id="closeUploadModal">&times;</span>
-            <h3 style="margin-bottom: var(--space-xl);">Upload Gene Entries (CSV)</h3>
-            
-            <div style="margin-bottom: var(--space-lg);">
-                <p style="color: var(--text-secondary); margin-bottom: var(--space-sm);">
-                    Upload a CSV file to bulk-import disease-gene entries.
-                </p>
-                <div style="background: var(--bg-tertiary); padding: var(--space-md); border-radius: var(--radius-md); font-size: var(--text-sm);">
-                    <strong>Required columns:</strong>
-                    <code style="display: block; margin-top: var(--space-xs);">disease_name, disease_code, gene_symbol</code>
-                    <div style="margin-top: var(--space-sm); color: var(--text-tertiary);">
-                        Optional: <code>description</code>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Drop Zone -->
-            <div class="file-drop-zone" id="fileDropZone">
-                <div class="icon">📄</div>
-                <div style="font-weight: 500; margin-bottom: var(--space-xs);">Drop CSV file here</div>
-                <div style="color: var(--text-tertiary); font-size: var(--text-sm);">or click to browse</div>
-                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
-            </div>
-            
-            <!-- Selected File -->
-            <div id="selectedFileInfo" class="selected-file" style="display: none;">
-                <span class="file-icon">📋</span>
-                <div class="file-info">
-                    <div class="file-name" id="selectedFileName">filename.csv</div>
-                    <div class="file-size" id="selectedFileSize">0 KB</div>
-                </div>
-                <button type="button" id="clearFileBtn" class="btn btn-sm btn-ghost">✕</button>
-            </div>
-            
-            <!-- Upload Progress -->
-            <div id="uploadProgress" class="upload-progress" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span id="uploadStatusText">Processing...</span>
-                    <span class="spinner-inline"></span>
-                </div>
-                <div class="progress">
-                    <div class="progress-bar" id="uploadProgressBar" style="width: 0%;"></div>
-                </div>
-            </div>
-            
-            <!-- Upload Summary -->
-            <div id="uploadSummary" style="display: none;">
-                <div class="upload-summary">
-                    <div class="upload-summary-item success">
-                        <div class="count" id="insertedCount">0</div>
-                        <div class="label">Inserted</div>
-                    </div>
-                    <div class="upload-summary-item warning">
-                        <div class="count" id="skippedCount">0</div>
-                        <div class="label">Skipped</div>
-                    </div>
-                </div>
-                <div id="uploadErrors" style="margin-top: var(--space-md); max-height: 150px; overflow-y: auto;"></div>
-            </div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: var(--space-md); margin-top: var(--space-xl);">
-                <button type="button" id="cancelUploadBtn" class="btn btn-outline">Cancel</button>
-                <button type="button" id="processUploadBtn" class="btn btn-primary" disabled>
-                    <span id="uploadBtnText">Upload & Process</span>
-                    <span id="uploadBtnSpinner" class="spinner-inline" style="display: none;"></span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Delete Confirmation Modal -->
     <div class="modal-overlay" id="deleteModal">
         <div class="modal-content" style="max-width: 450px;">
@@ -497,9 +421,6 @@
                 modalManager.openGeneModal();
             });
             
-            document.getElementById('bulkUploadBtn').addEventListener('click', () => {
-                modalManager.openUploadModal();
-            });
             
             document.getElementById('createFirstEntryBtn').addEventListener('click', () => {
                 modalManager.openGeneModal();
