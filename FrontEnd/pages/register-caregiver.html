@@ -97,114 +97,119 @@
 <body>
     <div class="register-container fade-in"
         style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); padding: var(--space-xl);">
-        <div class="card-glass" style="padding: var(--space-2xl);">
+        <div style="width: 100%; max-width: 600px;">
             <a href="role-selection.html" class="back-link">← Choose Different Role</a>
+            <br></br>
 
-            <div class="register-header">
-                <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">👨‍👩‍👧</div>
-                <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
-                    Caregiver Registration
-                </h1>
-                <p class="text-secondary">Create an account to support your loved ones' health journey</p>
-            </div>
+            <div class="card-glass" style="padding: var(--space-2xl);">
 
-            <!-- Info Box -->
-            <div class="info-box">
-                <h4>👁️ What Caregivers Can Do</h4>
-                <ul>
-                    <li>View risk assessment results for patients who grant you access</li>
-                    <li>Track assessment history over time</li>
-                    <li>Help loved ones understand their results</li>
-                </ul>
-                <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); color: var(--text-tertiary);">
-                    <strong>Note:</strong> You will never have access to raw genetic data. Privacy is our priority.
-                </p>
-            </div>
-
-            <!-- Pending Invitations Notice -->
-            <div id="pendingInvitationsSection" style="display: none;">
-                <div class="pending-invitations">
-                    <h4>📨 You have pending invitations from:</h4>
-                    <div id="pendingInvitationsList"></div>
+                <div class="register-header">
+                    <div style="font-size: var(--text-4xl); margin-bottom: var(--space-md);">👨‍👩‍👧</div>
+                    <h1 style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                        Caregiver Registration
+                    </h1>
+                    <p class="text-secondary">Create an account to support your loved ones' health journey</p>
                 </div>
-            </div>
 
-            <div>
-                <form id="register-form">
-                    <div class="grid grid-cols-2 gap-lg">
-                        <div class="form-group">
-                            <label for="firstName" class="form-label form-label-required">First Name</label>
-                            <input type="text" id="firstName" class="form-input" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="lastName" class="form-label form-label-required">Last Name</label>
-                            <input type="text" id="lastName" class="form-input" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="email" class="form-label form-label-required">Email Address</label>
-                        <input type="email" id="email" class="form-input" required>
-                        <span class="form-hint">Use the same email that your family member used to invite you</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="phone" class="form-label">Phone Number</label>
-                        <input type="tel" id="phone" class="form-input" placeholder="+65 9223 4567">
-                        <span class="form-hint">Optional, for notifications</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password" class="form-label form-label-required">Password</label>
-                        <input type="password" id="password" class="form-input" required>
-                        <div class="password-strength">
-                            <div class="password-strength-bar" id="passwordStrengthBar"></div>
-                        </div>
-                        <span class="form-hint" id="passwordHint">At least 8 characters</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="confirmPassword" class="form-label form-label-required">Confirm Password</label>
-                        <input type="password" id="confirmPassword" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-checkbox">
-                            <input type="checkbox" id="terms" required>
-                            <span class="text-sm">
-                                I agree to the <a href="terms.html" style="color: var(--primary-color);">Terms of
-                                    Service</a>
-                                and <a href="privacy.html" style="color: var(--primary-color);">Privacy Policy</a>
-                            </span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-checkbox">
-                            <input type="checkbox" id="caregiverAgreement" required>
-                            <span class="text-sm">
-                                I understand that I will only have access to information that patients explicitly share with me,
-                                and I agree to respect their privacy
-                            </span>
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-block btn-lg">
-                        Create Caregiver Account
-                    </button>
-                </form>
-
-                <div style="margin-top: var(--space-xl); text-align: center;">
-                    <p class="text-secondary">
-                        Already have an account?
-                        <a href="login.html" style="color: var(--primary-color); font-weight: 500;">
-                            Sign in
-                        </a>
+                <!-- Info Box -->
+                <div class="info-box">
+                    <h4>👁️ What Caregivers Can Do</h4>
+                    <ul>
+                        <li>View risk assessment results for patients who grant you access</li>
+                        <li>Track assessment history over time</li>
+                        <li>Help loved ones understand their results</li>
+                    </ul>
+                    <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); color: var(--text-tertiary);">
+                        <strong>Note:</strong> You will never have access to raw genetic data. Privacy is our priority.
                     </p>
+                </div>
+
+                <!-- Pending Invitations Notice -->
+                <div id="pendingInvitationsSection" style="display: none;">
+                    <div class="pending-invitations">
+                        <h4>📨 You have pending invitations from:</h4>
+                        <div id="pendingInvitationsList"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <form id="register-form">
+                        <div class="grid grid-cols-2 gap-lg">
+                            <div class="form-group">
+                                <label for="firstName" class="form-label form-label-required">First Name</label>
+                                <input type="text" id="firstName" class="form-input" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lastName" class="form-label form-label-required">Last Name</label>
+                                <input type="text" id="lastName" class="form-input" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email" class="form-label form-label-required">Email Address</label>
+                            <input type="email" id="email" class="form-input" required>
+                            <span class="form-hint">Use the same email that your family member used to invite you</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" id="phone" class="form-input" placeholder="+65 9223 4567">
+                            <span class="form-hint">Optional, for notifications</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password" class="form-label form-label-required">Password</label>
+                            <input type="password" id="password" class="form-input" required>
+                            <div class="password-strength">
+                                <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                            </div>
+                            <span class="form-hint" id="passwordHint">At least 8 characters</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword" class="form-label form-label-required">Confirm Password</label>
+                            <input type="password" id="confirmPassword" class="form-input" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="terms" required>
+                                <span class="text-sm">
+                                    I agree to the <a href="terms.html" style="color: var(--primary-color);">Terms of
+                                        Service</a>
+                                    and <a href="privacy.html" style="color: var(--primary-color);">Privacy Policy</a>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="caregiverAgreement" required>
+                                <span class="text-sm">
+                                    I understand that I will only have access to information that patients explicitly share with me,
+                                    and I agree to respect their privacy
+                                </span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">
+                            Create Caregiver Account
+                        </button>
+                    </form>
+
+                    <div style="margin-top: var(--space-xl); text-align: center;">
+                        <p class="text-secondary">
+                            Already have an account?
+                            <a href="login.html" style="color: var(--primary-color); font-weight: 500;">
+                                Sign in
+                            </a>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
+            
     </div>
 
     <script src="../js/config.js"></script>

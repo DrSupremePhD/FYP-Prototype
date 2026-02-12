@@ -22,7 +22,7 @@
         .hero {
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: space-around;
             justify-content: center;
             background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
             position: relative;
@@ -52,12 +52,13 @@
         .hero-logo {
             font-size: var(--text-5xl);
             margin-bottom: var(--space-md);
+            margin-top: var(--space-lg);
         }
 
         .hero-title {
             font-size: clamp(2.5rem, 5vw, 4rem);
             font-weight: 700;
-            margin-bottom: var(--space-lg);
+            margin-bottom: var(--space-2xl);
             background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -67,7 +68,8 @@
         .hero-subtitle {
             font-size: var(--text-xl);
             color: var(--text-secondary);
-            margin-bottom: var(--space-2xl);
+            margin-top: var(--space-xl);
+            margin-bottom: var(--space-xl);
             line-height: 1.6;
         }
 
